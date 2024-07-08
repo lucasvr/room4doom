@@ -443,7 +443,8 @@ pub fn circle_line_collide(c_origin: Vec3, c_radius: f32, l_start: Vec3, l_end: 
     circle_point_intersect(c_origin, c_radius, nearest)
 }
 
-/// Do a 2d XY projection. Zeroes out the Z component in the `Vec3` copy internally.
+/// Do a 2d XY projection. Zeroes out the Z component in the `Vec3` copy
+/// internally.
 fn project_vec2d(this: Vec3, onto: Vec3) -> Vec3 {
     let d = onto.dot(onto);
     if d > 0.0 {
@@ -453,7 +454,8 @@ fn project_vec2d(this: Vec3, onto: Vec3) -> Vec3 {
     onto
 }
 
-/// Do a 2d XY intersection. Zeroes out the Z component in the `Vec3` copy internally.
+/// Do a 2d XY intersection. Zeroes out the Z component in the `Vec3` copy
+/// internally.
 pub fn circle_point_intersect(mut origin: Vec3, radius: f32, mut point: Vec3) -> bool {
     origin.z = 0.0;
     point.z = 0.0;
