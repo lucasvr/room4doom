@@ -49,6 +49,7 @@ pub fn teleport(
                     player.viewz = old_z + player.viewheight;
                 }
 
+                dbg!("???????");
                 if !teleport_move(endpoint.xyz, thing, level) {
                     return false;
                 }
@@ -108,7 +109,7 @@ pub fn teleport_move(xyz: Vec3, thing: &mut MapObject, level: &mut Level) -> boo
         thing.ceilingz = ceilzz;
         thing.set_thing_position();
     }
-    false
+    true
 }
 
 fn telefrag(
