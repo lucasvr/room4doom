@@ -294,8 +294,8 @@ pub(crate) fn a_bfgspray(player: &mut MapObject) {
         if let Some(aim) = aim {
             let mut lt = aim.line_target;
             let level = unsafe { &mut *player.level };
-            let z = lt.z as i32 + ((lt.height as i32) >> 2);
-            MapObject::spawn_map_object(lt.xy.x, lt.xy.y, z, MapObjKind::MT_EXTRABFG, level);
+            let z = lt.xyz.z as i32 + ((lt.height as i32) >> 2);
+            MapObject::spawn_map_object(lt.xyz.x, lt.xyz.y, z, MapObjKind::MT_EXTRABFG, level);
 
             let mut damage = 0;
             for _ in 0..15 {
@@ -331,7 +331,7 @@ pub(crate) fn a_punch(player: &mut Player, _pspr: &mut PspDef) {
         if let Some(res) = slope {
             let target = res.line_target;
             mobj.start_sound(SfxName::Punch);
-            mobj.angle = point_to_angle_2(target.xy, mobj.xy);
+            mobj.angle = point_to_angle_2(target.xyz, mobj.xyz);
         }
     }
 }
@@ -380,7 +380,7 @@ pub(crate) fn a_saw(player: &mut Player, _pspr: &mut PspDef) {
         if let Some(res) = slope {
             let target = res.line_target;
             mobj.start_sound(SfxName::Punch);
-            let angle = point_to_angle_2(target.xy, mobj.xy);
+            let angle = point_to_angle_2(target.xyz, mobj.xyz);
 
             let delta = angle.rad() - mobj.angle.rad();
             if delta > FRAC_PI_2 / 20.0 {

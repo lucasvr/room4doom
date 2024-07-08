@@ -3,13 +3,13 @@ use super::segs::SegRender;
 use super::things::VisSprite;
 use super::RenderData;
 use crate::utilities::{
-    angle_to_screen, corrected_fov_for_height, projection, vertex_angle_to_object, y_scale
+    angle_to_screen, corrected_fov_for_height, projection, vertex_angle_to_object, y_scale,
 };
 use gameplay::log::trace;
 use gameplay::{
-    Angle, Level, MapData, MapObject, Node, PicData, Player, Sector, Segment, SubSector
+    Angle, Level, MapData, MapObject, Node, PicData, Player, Sector, Segment, SubSector,
 };
-use glam::Vec2;
+use glam::Vec3;
 use render_target::{PixelBuffer, PlayRenderer, RenderTarget};
 use std::f32::consts::PI;
 use std::mem;
@@ -152,12 +152,12 @@ impl SoftwareRenderer {
         let viewangle = mobj.angle;
 
         // Blocks some zdoom segs rendering
-        if !seg.is_facing_point(&mobj.xy) {
+        if !seg.is_facing_point(&mobj.xyz) {
             return;
         }
 
-        let mut angle1 = vertex_angle_to_object(&seg.v1, mobj); // widescreen: Leave as is
-        let mut angle2 = vertex_angle_to_object(&seg.v2, mobj); // widescreen: Leave as is
+        let mut angle1 = vertex_angle_to_object(seg.v1, mobj); // widescreen: Leave as is
+        let mut angle2 = vertex_angle_to_object(seg.v2, mobj); // widescreen: Leave as is
 
         let span = (angle1 - angle2).rad();
         if span.abs() >= PI {
@@ -500,7 +500,7 @@ impl SoftwareRenderer {
         // otherwise get node
         let node = &map.get_nodes()[node_id as usize];
         // find which side the point is on
-        let side = node.point_on_side(&mobj.xy);
+        let side = node.point_on_side(&mobj.xyz);
         // Recursively divide front space.
         self.render_bsp_node(map, player, node.children[side], pic_data, pixels, count);
 
@@ -542,23 +542,23 @@ impl SoftwareRenderer {
         let lt = node.bboxes[side][0];
         let rb = node.bboxes[side][1];
 
-        if node.point_in_bounds(&mobj.xy, side) {
+        if node.point_in_bounds(mobj.xyz, side) {
             return true;
         }
 
         let boxx;
         let boxy;
-        if mobj.xy.x <= lt.x {
+        if mobj.xyz.x <= lt.x {
             boxx = 0;
-        } else if mobj.xy.x < rb.x {
+        } else if mobj.xyz.x < rb.x {
             boxx = 1;
         } else {
             boxx = 2;
         }
 
-        if mobj.xy.y >= lt.y {
+        if mobj.xyz.y >= lt.y {
             boxy = 0;
-        } else if mobj.xy.y > rb.y {
+        } else if mobj.xyz.y > rb.y {
             boxy = 1;
         } else {
             boxy = 2;
@@ -573,11 +573,11 @@ impl SoftwareRenderer {
         let v2;
         match boxpos {
             0 => {
-                v1 = Vec2::new(rb.x, lt.y);
-                v2 = Vec2::new(lt.x, rb.y);
+                v1 = Vec3::new(rb.x, lt.y, 0.0);
+                v2 = Vec3::new(lt.x, rb.y, 0.0);
             }
             1 => {
-                v1 = Vec2::new(rb.x, lt.y);
+                v1 = Vec3::new(rb.x, lt.y, 0.0);
                 v2 = lt;
             }
             2 => {
@@ -586,23 +586,23 @@ impl SoftwareRenderer {
             }
             4 => {
                 v1 = lt;
-                v2 = Vec2::new(lt.x, rb.y);
+                v2 = Vec3::new(lt.x, rb.y, 0.0);
             }
             6 => {
                 v1 = rb;
-                v2 = Vec2::new(rb.x, lt.y);
+                v2 = Vec3::new(rb.x, lt.y, 0.0);
             }
             8 => {
                 v1 = lt;
                 v2 = rb;
             }
             9 => {
-                v1 = Vec2::new(lt.x, rb.y);
+                v1 = Vec3::new(lt.x, rb.y, 0.0);
                 v2 = rb;
             }
             10 => {
-                v1 = Vec2::new(lt.x, rb.y);
-                v2 = Vec2::new(rb.x, lt.y);
+                v1 = Vec3::new(lt.x, rb.y, 0.0);
+                v2 = Vec3::new(rb.x, lt.y, 0.0);
             }
             _ => {
                 return false;
@@ -611,8 +611,8 @@ impl SoftwareRenderer {
 
         let clipangle = Angle::new(self.seg_renderer.fov_half);
         // Reset to correct angles
-        let mut angle1 = vertex_angle_to_object(&v1, mobj);
-        let mut angle2 = vertex_angle_to_object(&v2, mobj);
+        let mut angle1 = vertex_angle_to_object(v1, mobj);
+        let mut angle2 = vertex_angle_to_object(v2, mobj);
 
         let span = angle1 - angle2;
 

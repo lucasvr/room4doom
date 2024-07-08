@@ -1,7 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
 use gameplay::{Angle, MapObject};
-use glam::Vec2;
+use glam::Vec3;
 
 /// Find a new fov for the width of buffer proportional to the OG Doom height
 pub fn corrected_fov_for_height(fov: f32, width: f32, height: f32) -> f32 {
@@ -35,7 +35,7 @@ pub fn screen_to_angle(fov: f32, x: f32, screen_width_half: f32) -> f32 {
 }
 
 /// R_PointToDist
-pub fn point_to_dist(x: f32, y: f32, to: Vec2) -> f32 {
+pub fn point_to_dist(x: f32, y: f32, to: Vec3) -> f32 {
     let mut dx = (x - to.x).abs();
     let mut dy = (y - to.y).abs();
 
@@ -57,9 +57,9 @@ pub fn angle_to_screen(fov: f32, half_screen_width: f32, screen_width: f32, angl
 }
 
 /// R_PointToAngle
-pub fn vertex_angle_to_object(vertex: &Vec2, mobj: &MapObject) -> Angle {
-    let x = vertex.x - mobj.xy.x;
-    let y = vertex.y - mobj.xy.y;
+pub fn vertex_angle_to_object(vertex: Vec3, mobj: &MapObject) -> Angle {
+    let x = vertex.x - mobj.xyz.x;
+    let y = vertex.y - mobj.xyz.y;
     Angle::new(y.atan2(x))
 }
 

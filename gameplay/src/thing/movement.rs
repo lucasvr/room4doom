@@ -5,7 +5,7 @@
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 use std::ptr;
 
-use glam::Vec2;
+use glam::Vec3;
 use log::{debug, error};
 
 use crate::angle::Angle;
@@ -17,7 +17,7 @@ use crate::level::flags::LineDefFlags;
 use crate::level::map_data::BSPTrace;
 use crate::level::map_defs::{BBox, LineDef, SlopeType};
 use crate::utilities::{
-    box_on_line_side, p_random, path_traverse, BestSlide, Intercept, PortalZ, FRACUNIT_DIV4
+    box_on_line_side, p_random, path_traverse, BestSlide, Intercept, PortalZ, FRACUNIT_DIV4,
 };
 use crate::{MapObjKind, MapObject, MapPtr};
 
@@ -50,16 +50,16 @@ pub struct SubSectorMinMax {
 impl MapObject {
     /// P_ZMovement
     pub(crate) fn p_z_movement(&mut self) {
-        if self.player.is_some() && self.z < self.floorz {
+        if self.player.is_some() && self.xyz.z < self.floorz {
             unsafe {
                 let player = &mut *(self.player.unwrap());
-                player.viewheight -= self.floorz - self.z;
+                player.viewheight -= self.floorz - self.xyz.z;
                 player.deltaviewheight = (((VIEWHEIGHT - player.viewheight) as i32) >> 3) as f32;
             }
         }
 
         // adjust height
-        self.z += self.momz;
+        self.xyz.z += self.momxyz.z;
 
         if self.flags & MapObjFlag::Float as u32 != 0 {
             if let Some(target) = self.target {
@@ -69,13 +69,13 @@ impl MapObject {
                 if self.flags & MapObjFlag::Skullfly as u32 == 0
                     && self.flags & MapObjFlag::Infloat as u32 == 0
                 {
-                    let dist = self.xy.distance(target.xy);
-                    let delta = target.z + self.height / 2.0 - self.z;
+                    let dist = self.xyz.distance(target.xyz);
+                    let delta = target.xyz.z + self.height / 2.0 - self.xyz.z;
 
                     if delta < 0.0 && dist < -(delta * 3.0) {
-                        self.z -= FLOATSPEED;
+                        self.xyz.z -= FLOATSPEED;
                     } else if delta > 0.0 && dist < delta * 3.0 {
-                        self.z += FLOATSPEED;
+                        self.xyz.z += FLOATSPEED;
                     }
                 }
             }
@@ -83,29 +83,29 @@ impl MapObject {
 
         // clip movement
 
-        if self.z <= self.floorz {
+        if self.xyz.z <= self.floorz {
             // hit the floor
             // TODO: The lost soul correction for old demos
             if self.flags & MapObjFlag::Skullfly as u32 != 0 {
                 // the skull slammed into something
-                self.momz = -self.momz;
+                self.momxyz.z = -self.momxyz.z;
             }
 
-            if self.momz < 0.0 {
-                if self.player.is_some() && self.momz < -1.0 * 8.0 {
+            if self.momxyz.z < 0.0 {
+                if self.player.is_some() && self.momxyz.z < -1.0 * 8.0 {
                     // Squat down.
                     // Decrease viewheight for a moment
                     // after hitting the ground (hard),
                     // and utter appropriate sound.
                     unsafe {
                         let player = &mut *(self.player.unwrap());
-                        player.viewheight = ((self.momz as i32) >> 3) as f32;
+                        player.viewheight = ((self.momxyz.z as i32) >> 3) as f32;
                     }
                 }
-                self.momz = 0.0;
+                self.momxyz.z = 0.0;
             }
 
-            self.z = self.floorz;
+            self.xyz.z = self.floorz;
 
             if self.flags & MapObjFlag::Missile as u32 != 0
                 && self.flags & MapObjFlag::Noclip as u32 == 0
@@ -114,23 +114,23 @@ impl MapObject {
                 return;
             }
         } else if self.flags & MapObjFlag::Nogravity as u32 == 0 {
-            if self.momz == 0.0 {
-                self.momz = -GRAVITY * 2.0;
+            if self.momxyz.z == 0.0 {
+                self.momxyz.z = -GRAVITY * 2.0;
             } else {
-                self.momz -= GRAVITY;
+                self.momxyz.z -= GRAVITY;
             }
         }
 
-        if self.z + self.height > self.ceilingz {
+        if self.xyz.z + self.height > self.ceilingz {
             // hit the ceiling
-            if self.momz > 0.0 {
-                self.momz = 0.0;
-                self.z = self.ceilingz - self.height;
+            if self.momxyz.z > 0.0 {
+                self.momxyz.z = 0.0;
+                self.xyz.z = self.ceilingz - self.height;
             }
 
             if self.flags & MapObjFlag::Skullfly as u32 != 0 {
                 // the skull slammed into something
-                self.momz = -self.momz;
+                self.momxyz.z = -self.momxyz.z;
             }
 
             if self.flags & MapObjFlag::Missile as u32 != 0
@@ -143,10 +143,10 @@ impl MapObject {
 
     /// Doom function name `P_XYMovement`
     pub(crate) fn p_xy_movement(&mut self) {
-        if self.momxy.x == 0.0 && self.momxy.y == 0.0 {
+        if self.momxyz.x == 0.0 && self.momxyz.y == 0.0 {
             if self.flags & MapObjFlag::Skullfly as u32 != 0 {
                 self.flags &= !(MapObjFlag::Skullfly as u32);
-                self.momz = 0.0;
+                self.momxyz.z = 0.0;
                 self.set_state(self.info.spawnstate);
             }
             return;
@@ -166,21 +166,21 @@ impl MapObject {
         // P_XYMovement
         // `p_try_move` will apply the move if it is valid, and do specials, explodes
         // etc
-        self.momxy.x = self.momxy.x.clamp(-MAXMOVE, MAXMOVE);
-        self.momxy.y = self.momxy.y.clamp(-MAXMOVE, MAXMOVE);
-        let mut xmove = self.momxy.x;
-        let mut ymove = self.momxy.y;
+        self.momxyz.x = self.momxyz.x.clamp(-MAXMOVE, MAXMOVE);
+        self.momxyz.y = self.momxyz.y.clamp(-MAXMOVE, MAXMOVE);
+        let mut xmove = self.momxyz.x;
+        let mut ymove = self.momxyz.y;
         let mut ptryx;
         let mut ptryy;
         loop {
             if xmove > MAXMOVE / 2.0 || ymove > MAXMOVE / 2.0 {
-                ptryx = self.xy.x + xmove / 2.0;
-                ptryy = self.xy.y + ymove / 2.0;
+                ptryx = self.xyz.x + xmove / 2.0;
+                ptryy = self.xyz.y + ymove / 2.0;
                 xmove /= 2.0;
                 ymove /= 2.0;
             } else {
-                ptryx = self.xy.x + xmove;
-                ptryy = self.xy.y + ymove;
+                ptryx = self.xyz.x + xmove;
+                ptryy = self.xyz.y + ymove;
                 xmove = 0.0;
                 ymove = 0.0;
             }
@@ -204,7 +204,7 @@ impl MapObject {
                     }
                     self.p_explode_missile(); //
                 } else {
-                    self.momxy = Vec2::default();
+                    self.momxyz = Vec3::default();
                 }
             }
 
@@ -218,7 +218,7 @@ impl MapObject {
             return; // no friction for missiles ever
         }
 
-        if self.z > self.floorz {
+        if self.xyz.z > self.floorz {
             return; // no friction when airborne
         }
 
@@ -227,23 +227,23 @@ impl MapObject {
         if self.flags & MapObjFlag::Corpse as u32 != 0 {
             // do not stop sliding
             //  if halfway off a step with some momentum
-            if (self.momxy.x > FRACUNIT_DIV4
-                || self.momxy.x < -FRACUNIT_DIV4
-                || self.momxy.y > FRACUNIT_DIV4
-                || self.momxy.y < -FRACUNIT_DIV4)
+            if (self.momxyz.x > FRACUNIT_DIV4
+                || self.momxyz.x < -FRACUNIT_DIV4
+                || self.momxyz.y > FRACUNIT_DIV4
+                || self.momxyz.y < -FRACUNIT_DIV4)
                 && (self.floorz - floorheight).abs() > f32::EPSILON
             {
                 return;
             }
         }
 
-        if self.momxy.x > -STOPSPEED
-            && self.momxy.x < STOPSPEED
-            && self.momxy.y > -STOPSPEED
-            && self.momxy.y < STOPSPEED
+        if self.momxyz.x > -STOPSPEED
+            && self.momxyz.x < STOPSPEED
+            && self.momxyz.y > -STOPSPEED
+            && self.momxyz.y < STOPSPEED
         {
             if self.player.is_none() {
-                self.momxy = Vec2::default();
+                self.momxyz = Vec3::default();
             } else if let Some(player) = self.player_mut() {
                 if player.cmd.forwardmove == 0 && player.cmd.sidemove == 0 {
                     // if in a walking frame, stop moving
@@ -252,11 +252,11 @@ impl MapObject {
                     // < 4 {
                     self.set_state(StateNum::PLAY);
                     // }
-                    self.momxy = Vec2::default();
+                    self.momxyz = Vec3::default();
                 }
             }
         } else {
-            self.momxy *= FRICTION;
+            self.momxyz *= FRICTION;
         }
     }
 
@@ -269,7 +269,7 @@ impl MapObject {
         ctrl: &mut SubSectorMinMax,
     ) -> bool {
         // P_CrossSpecialLine
-        let try_move = Vec2::new(ptryx, ptryy);
+        let try_move = Vec3::new(ptryx, ptryy, self.xyz.z);
 
         ctrl.floatok = false;
         if !self.p_check_position(try_move, ctrl) {
@@ -283,12 +283,13 @@ impl MapObject {
             ctrl.floatok = true;
 
             if self.flags & MapObjFlag::Teleport as u32 == 0
-                && ctrl.max_ceil_z - self.z < self.height
+                && ctrl.max_ceil_z - self.xyz.z < self.height
             {
                 return false; // thing must lower itself to fit
             }
 
-            if self.flags & MapObjFlag::Teleport as u32 == 0 && ctrl.min_floor_z - self.z > 24.0 {
+            if self.flags & MapObjFlag::Teleport as u32 == 0 && ctrl.min_floor_z - self.xyz.z > 24.0
+            {
                 return false; // too big a step up
             }
 
@@ -305,11 +306,11 @@ impl MapObject {
             self.unset_thing_position();
         }
 
-        let old_xy = self.xy;
+        let old_xyz = self.xyz;
 
         self.floorz = ctrl.min_floor_z;
         self.ceilingz = ctrl.max_ceil_z;
-        self.xy = try_move;
+        self.xyz = try_move;
 
         unsafe {
             self.set_thing_position();
@@ -318,8 +319,8 @@ impl MapObject {
         if self.flags & (MapObjFlag::Teleport as u32 | MapObjFlag::Noclip as u32) == 0 {
             for ld in &ctrl.spec_hits {
                 // see if the line was crossed
-                let side = ld.point_on_side(self.xy);
-                let old_side = ld.point_on_side(old_xy);
+                let side = ld.point_on_side(self.xyz);
+                let old_side = ld.point_on_side(old_xyz);
                 if side != old_side && ld.special != 0 {
                     cross_special_line(old_side, ld.clone(), self)
                 }
@@ -331,7 +332,7 @@ impl MapObject {
     /// Check for things and lines contacts.
     ///
     /// Doom function name `P_CheckPosition`
-    pub(crate) fn p_check_position(&mut self, endpoint: Vec2, ctrl: &mut SubSectorMinMax) -> bool {
+    pub(crate) fn p_check_position(&mut self, endpoint: Vec3, ctrl: &mut SubSectorMinMax) -> bool {
         let left = endpoint.x - self.radius;
         let right = endpoint.x + self.radius;
         let top = endpoint.y + self.radius;
@@ -368,8 +369,11 @@ impl MapObject {
         // subsectors crossed = average 2
         // lines per subsector = average 4
         // Lines to check = 4~
-        let mut bsp_trace =
-            BSPTrace::new_line(Vec2::new(left, bottom), Vec2::new(right, top), self.radius);
+        let mut bsp_trace = BSPTrace::new_line(
+            Vec3::new(left, bottom, endpoint.z),
+            Vec3::new(right, top, endpoint.z),
+            self.radius,
+        );
         let mut count = 0;
         bsp_trace.find_intercepts(level.map_data.start_node(), &level.map_data, &mut count);
 
@@ -402,7 +406,7 @@ impl MapObject {
     fn pit_check_thing(
         &mut self,
         thing: &mut MapObject,
-        endpoint: Vec2,
+        endpoint: Vec3,
         ctrl: &mut SubSectorMinMax,
     ) -> bool {
         if thing.flags
@@ -413,7 +417,7 @@ impl MapObject {
         }
 
         let dist = thing.radius + self.radius;
-        if (thing.xy.x - endpoint.x).abs() >= dist || (thing.xy.y - endpoint.y).abs() >= dist {
+        if (thing.xyz.x - endpoint.x).abs() >= dist || (thing.xyz.y - endpoint.y).abs() >= dist {
             // No hit
             return true;
         }
@@ -427,8 +431,8 @@ impl MapObject {
             let damage = ((p_random() % 8) + 1) * self.info.damage;
             thing.p_take_damage(Some(self), None, true, damage);
 
-            self.momxy = Vec2::default();
-            self.momz = 0.0;
+            self.momxyz = Vec3::default();
+            self.momxyz.z = 0.0;
 
             self.flags &= !(MapObjFlag::Skullfly as u32);
             self.set_state(self.info.spawnstate);
@@ -437,10 +441,10 @@ impl MapObject {
 
         // Special mssile handling
         if self.flags & MapObjFlag::Missile as u32 != 0 {
-            if self.z > thing.z + thing.height {
+            if self.xyz.z > thing.xyz.z + thing.height {
                 return true; // over
             }
-            if self.z + thing.height < thing.z {
+            if self.xyz.z + thing.height < thing.xyz.z {
                 return true; // under
             }
 
@@ -485,15 +489,15 @@ impl MapObject {
 
         if thing.flags & MapObjFlag::Solid as u32 == MapObjFlag::Solid as u32 {
             // Already over it?
-            if self.z >= thing.z + thing.height {
+            if self.xyz.z >= thing.xyz.z + thing.height {
                 // Step over it?
-                if thing.z + thing.height - self.z > 24.0 {
+                if thing.xyz.z + thing.height - self.xyz.z > 24.0 {
                     return false;
                 }
-                ctrl.min_floor_z = thing.z + thing.height;
+                ctrl.min_floor_z = thing.xyz.z + thing.height;
                 return true; // over
             }
-            if self.z + thing.height <= thing.z {
+            if self.xyz.z + thing.height <= thing.xyz.z {
                 return true; // under
             }
         }
@@ -591,20 +595,20 @@ impl MapObject {
         let trailx;
         let traily;
 
-        if self.momxy.x > 0.0 {
-            leadx = self.xy.x + self.radius;
-            trailx = self.xy.x - self.radius;
+        if self.momxyz.x > 0.0 {
+            leadx = self.xyz.x + self.radius;
+            trailx = self.xyz.x - self.radius;
         } else {
-            leadx = self.xy.x - self.radius;
-            trailx = self.xy.x + self.radius;
+            leadx = self.xyz.x - self.radius;
+            trailx = self.xyz.x + self.radius;
         }
 
-        if self.momxy.y > 0.0 {
-            leady = self.xy.y + self.radius;
-            traily = self.xy.y - self.radius;
+        if self.momxyz.y > 0.0 {
+            leady = self.xyz.y + self.radius;
+            traily = self.xyz.y - self.radius;
         } else {
-            leady = self.xy.y - self.radius;
-            traily = self.xy.y + self.radius;
+            leady = self.xyz.y - self.radius;
+            traily = self.xyz.y + self.radius;
         }
 
         let level = unsafe { &mut *self.level };
@@ -615,29 +619,29 @@ impl MapObject {
             }
 
             // tail to front, centered
-            let mut bsp_trace = BSPTrace::new_line(self.xy, self.xy + self.momxy, self.radius);
+            let mut bsp_trace = BSPTrace::new_line(self.xyz, self.xyz + self.momxyz, self.radius);
             let mut count = 0;
             bsp_trace.find_intercepts(level.map_data.start_node(), &level.map_data, &mut count);
 
             path_traverse(
-                Vec2::new(leadx, leady),
-                Vec2::new(leadx, leady) + self.momxy,
+                Vec3::new(leadx, leady, self.xyz.z),
+                Vec3::new(leadx, leady, self.xyz.z) + self.momxyz,
                 PT_ADDLINES,
                 level,
                 |intercept| self.slide_traverse(intercept),
                 &mut bsp_trace,
             );
             path_traverse(
-                Vec2::new(trailx, leady),
-                Vec2::new(trailx, leady) + self.momxy,
+                Vec3::new(trailx, leady, self.xyz.z),
+                Vec3::new(trailx, leady, self.xyz.z) + self.momxyz,
                 PT_ADDLINES,
                 level,
                 |intercept| self.slide_traverse(intercept),
                 &mut bsp_trace,
             );
             path_traverse(
-                Vec2::new(leadx, traily),
-                Vec2::new(leadx, traily) + self.momxy,
+                Vec3::new(leadx, traily, self.xyz.z),
+                Vec3::new(leadx, traily, self.xyz.z) + self.momxyz,
                 PT_ADDLINES,
                 level,
                 |intercept| self.slide_traverse(intercept),
@@ -652,10 +656,10 @@ impl MapObject {
 
             self.best_slide.best_slide_frac -= 0.031250;
             if self.best_slide.best_slide_frac > 0.0 {
-                let slide_move = self.momxy * self.best_slide.best_slide_frac; // bestfrac
+                let slide_move = self.momxyz * self.best_slide.best_slide_frac; // bestfrac
                 if !self.p_try_move(
-                    self.xy.x + slide_move.x,
-                    self.xy.y + slide_move.y,
+                    self.xyz.x + slide_move.x,
+                    self.xyz.y + slide_move.y,
                     &mut SubSectorMinMax::default(),
                 ) {
                     self.stair_step();
@@ -674,15 +678,15 @@ impl MapObject {
                 return;
             }
 
-            let mut slide_move = self.momxy * self.best_slide.best_slide_frac;
+            let mut slide_move = self.momxyz * self.best_slide.best_slide_frac;
             // Clip the moves.
             if let Some(best_slide_line) = self.best_slide.best_slide_line.as_ref() {
                 self.hit_slide_line(&mut slide_move, best_slide_line);
             }
 
-            self.momxy = slide_move;
+            self.momxyz = slide_move;
 
-            let endpoint = self.xy + slide_move;
+            let endpoint = self.xyz + slide_move;
             if self.p_try_move(endpoint.x, endpoint.y, &mut SubSectorMinMax::default()) {
                 return;
             }
@@ -705,7 +709,7 @@ impl MapObject {
     fn slide_traverse(&mut self, intercept: &Intercept) -> bool {
         if let Some(line) = &intercept.line {
             if (line.flags as usize) & LineDefFlags::TwoSided as usize == 0 {
-                if line.point_on_side(self.xy) != 0 {
+                if line.point_on_side(self.xyz) != 0 {
                     return true; // Don't hit backside
                 }
                 self.blocking_intercept(intercept);
@@ -714,8 +718,8 @@ impl MapObject {
             // set openrange, opentop, openbottom
             let portal = PortalZ::new(line);
             if portal.range < self.height // doesn't fit
-                || portal.top_z - self.z < self.height // thing is too high
-                || portal.bottom_z - self.z > 24.0
+                || portal.top_z - self.xyz.z < self.height // thing is too high
+                || portal.bottom_z - self.xyz.z > 24.0
             // too big a step up
             {
                 self.blocking_intercept(intercept);
@@ -732,20 +736,20 @@ impl MapObject {
     fn stair_step(&mut self) {
         // Line might have hit the middle, end-on?
         if !self.p_try_move(
-            self.xy.x,
-            self.xy.y + self.momxy.y,
+            self.xyz.x,
+            self.xyz.y + self.momxyz.y,
             &mut SubSectorMinMax::default(),
         ) {
             self.p_try_move(
-                self.xy.x + self.momxy.x,
-                self.xy.y,
+                self.xyz.x + self.momxyz.x,
+                self.xyz.y,
                 &mut SubSectorMinMax::default(),
             );
         }
     }
 
     /// P_HitSlideLine
-    fn hit_slide_line(&self, slide_move: &mut Vec2, line: &LineDef) {
+    fn hit_slide_line(&self, slide_move: &mut Vec3, line: &LineDef) {
         if matches!(line.slopetype, SlopeType::Horizontal) {
             slide_move.y = 0.0;
             return;
@@ -756,13 +760,13 @@ impl MapObject {
         }
 
         // let side = line.point_on_side(slide_move);
-        let line_angle = Angle::from_vector(line.delta);
+        let line_angle = Angle::from_vector_xy(line.delta);
         // if side == 1 {
         //     //line_angle += FRAC_PI_2;
         //     line_angle = Angle::from_vector(Vec2::new(line.delta.x * -1.0,
         // line.delta.y * -1.0)); }
 
-        let move_angle = Angle::from_vector(*slide_move);
+        let move_angle = Angle::from_vector_xy(*slide_move);
         // if move_angle.rad() > FRAC_PI_2 {
         //     move_angle -= FRAC_PI_2;
         // }
@@ -775,15 +779,15 @@ impl MapObject {
         let move_dist = slide_move.length();
         let new_dist = move_dist * delta_angle.cos();
 
-        *slide_move = line_angle.unit() * new_dist;
+        *slide_move = line_angle.unit_vec3() * new_dist;
     }
 
     /// P_UseLines
     /// Looks for special lines in front of the player to activate.
     pub(crate) fn use_lines(&mut self) {
-        let angle = self.angle.unit();
+        let angle = self.angle.unit_vec3();
 
-        let origin = self.xy;
+        let origin = self.xyz;
         let endpoint = origin + (angle * USERANGE);
 
         let level = unsafe { &mut *self.level };
@@ -813,8 +817,8 @@ impl MapObject {
                 line.v2.x,
                 line.v2.y,
                 line.special,
-                self.xy.x as i32,
-                self.xy.y as i32,
+                self.xyz.x as i32,
+                self.xyz.y as i32,
                 intercept.frac,
             );
 
@@ -831,7 +835,7 @@ impl MapObject {
                 return true;
             }
 
-            let side = line.point_on_side(self.xy);
+            let side = line.point_on_side(self.xyz);
             p_use_special_line(side as i32, line.clone(), self);
         }
         // can't use for than one special line in a row
@@ -850,8 +854,8 @@ impl MapObject {
 
         let target = unsafe { (**self.target.as_mut().unwrap()).mobj() };
 
-        let dx = target.xy.x - self.xy.x;
-        let dy = target.xy.y - self.xy.y;
+        let dx = target.xyz.x - self.xyz.x;
+        let dy = target.xyz.y - self.xyz.y;
         // Select a cardinal angle based on delta
         if dx > 10.0 {
             dirs[1] = MoveDir::East;
@@ -962,8 +966,8 @@ impl MapObject {
             return false;
         }
 
-        let tryx = self.xy.x + self.info.speed * DIR_XSPEED[self.movedir as usize];
-        let tryy = self.xy.y + self.info.speed * DIR_YSPEED[self.movedir as usize];
+        let tryx = self.xyz.x + self.info.speed * DIR_XSPEED[self.movedir as usize];
+        let tryy = self.xyz.y + self.info.speed * DIR_YSPEED[self.movedir as usize];
 
         let mut specs = SubSectorMinMax::default();
         if !self.p_try_move(tryx, tryy, &mut specs) {
@@ -971,10 +975,10 @@ impl MapObject {
             // TODO: if (actor->flags & MF_FLOAT && floatok)
             if self.flags & MapObjFlag::Float as u32 != 0 && specs.floatok {
                 // must adjust height
-                if self.z < specs.min_floor_z {
-                    self.z += FLOATSPEED;
+                if self.xyz.z < specs.min_floor_z {
+                    self.xyz.z += FLOATSPEED;
                 } else {
-                    self.z -= FLOATSPEED;
+                    self.xyz.z -= FLOATSPEED;
                 }
                 self.flags |= MapObjFlag::Infloat as u32;
                 return true;
@@ -997,7 +1001,7 @@ impl MapObject {
         }
 
         if self.flags & MapObjFlag::Float as u32 == 0 {
-            self.z = self.floorz;
+            self.xyz.z = self.floorz;
         }
 
         true

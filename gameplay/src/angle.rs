@@ -1,4 +1,4 @@
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use std::f32::consts::{PI, TAU};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -39,14 +39,21 @@ impl Angle {
         self.0.tan()
     }
 
-    pub fn unit(&self) -> Vec2 {
+    /// Make a unit vector discarding the Z component
+    pub fn unit_vec3(&self) -> Vec3 {
+        let (y, x) = self.0.sin_cos();
+        Vec3::new(x, y, 0.0)
+    }
+
+    /// Make a unit vector discarding the Z component
+    pub fn unit_vec2(&self) -> Vec2 {
         let (y, x) = self.0.sin_cos();
         Vec2::new(x, y)
     }
 
     //pub fn tan(&self) -> f32 { self.0.tan() }
 
-    pub fn from_vector(input: Vec2) -> Self {
+    pub fn from_vector_xy(input: Vec3) -> Self {
         Angle::new(input.y.atan2(input.x))
     }
 }

@@ -2,7 +2,7 @@
 
 use std::ptr;
 
-use glam::Vec2;
+use glam::Vec3;
 use log::{debug, error, info};
 use sound_traits::SfxName;
 
@@ -54,8 +54,7 @@ impl MapObject {
         }
 
         if self.flags & MapObjFlag::Skullfly as u32 != 0 {
-            self.momxy = Vec2::default();
-            self.momz = 0.0;
+            self.momxyz = Vec3::default();
             // extra flag setting here because sometimes float errors stuff it up
             self.flags &= !(MapObjFlag::Skullfly as u32);
             self.set_state(self.info.spawnstate);
@@ -89,24 +88,24 @@ impl MapObject {
             };
 
             if self.flags & MapObjFlag::Noclip as u32 == 0 && do_push {
-                let angle = point_to_angle_2(self.xy, inflict.xy);
+                let angle = point_to_angle_2(self.xyz, inflict.xyz);
                 let mut thrust = damage as f32 * 16.66 / self.info.mass as f32;
                 // make fall forwards sometimes
                 if damage < 40
                     && damage > self.health
-                    && self.z - inflict.z > 64.0
+                    && self.xyz.z - inflict.xyz.z > 64.0
                     && p_random() & 1 != 0
                 {
                     thrust *= 4.0;
                 }
 
-                self.momxy += angle.unit() * thrust;
+                self.momxyz += angle.unit_vec3() * thrust;
             }
         }
 
         let special = self.subsector.sector.special;
         let mobj_health = self.health;
-        let self_pos = self.xy;
+        let self_pos = self.xyz;
         let self_ang = self.angle;
         if let Some(player) = self.player_mut() {
             // end of game-exe hell hack
@@ -143,7 +142,7 @@ impl MapObject {
             }
 
             if let Some(source) = source.as_mut() {
-                player.status.attacked_from = point_to_angle_2(self_pos, source.xy);
+                player.status.attacked_from = point_to_angle_2(self_pos, source.xyz);
                 player.status.own_angle = self_ang;
                 player.status.attacked_angle_count = 6;
                 player.attacker = Some(*source);
@@ -257,8 +256,8 @@ impl MapObject {
 
         unsafe {
             let mobj = MapObject::spawn_map_object(
-                self.xy.x,
-                self.xy.y,
+                self.xyz.x,
+                self.xyz.y,
                 self.floorz as i32,
                 item,
                 &mut *self.level,
@@ -271,7 +270,7 @@ impl MapObject {
     ///
     /// Doom function name `P_TouchSpecialThing`
     pub(crate) fn touch_special(&mut self, special: &mut MapObject) {
-        let delta = special.z - self.z;
+        let delta = special.xyz.z - self.xyz.z;
 
         if delta > self.height || delta < -8.0 {
             // Can't reach it. Because map is essentially 2D we need to check Z

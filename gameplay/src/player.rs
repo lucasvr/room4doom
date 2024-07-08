@@ -1,12 +1,13 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::Vec2;
+use glam::Vec3;
 use log::{debug, error, info};
 use sound_traits::SfxName;
 
 use crate::angle::Angle;
 use crate::doom_def::{
-    ActFn, AmmoType, Card, PowerDuration, PowerType, WeaponType, BFGCELLS, CLIP_AMMO, MAXHEALTH, MAXPLAYERS, MAX_AMMO, VIEWHEIGHT, WEAPON_INFO
+    ActFn, AmmoType, Card, PowerDuration, PowerType, WeaponType, BFGCELLS, CLIP_AMMO, MAXHEALTH,
+    MAXPLAYERS, MAX_AMMO, VIEWHEIGHT, WEAPON_INFO,
 };
 use crate::info::{SpriteNum, StateNum, STATES};
 use crate::level::Level;
@@ -294,8 +295,8 @@ impl Player {
             unsafe {
                 (*mobj.level).start_sound(
                     sfx,
-                    mobj.xy.x,
-                    mobj.xy.y,
+                    mobj.xyz.x,
+                    mobj.xyz.y,
                     self as *const Self as usize, /* pointer cast as a UID */
                 )
             }
@@ -347,9 +348,9 @@ impl Player {
         let mv = fixed_to_float(mv);
         let x = mv * angle.cos();
         let y = mv * angle.sin();
-        let mxy = Vec2::new(x, y);
+        let mxy = Vec3::new(x, y, 0.0);
         if let Some(mobj) = self.mobj_mut() {
-            mobj.momxy += mxy;
+            mobj.momxyz += mxy;
         }
     }
 
@@ -364,8 +365,8 @@ impl Player {
         //  like a ramp with low health.
         if let Some(mobj) = self.mobj {
             let mobj = unsafe { &mut *mobj };
-            let x = mobj.momxy.x;
-            let y = mobj.momxy.y;
+            let x = mobj.momxyz.x;
+            let y = mobj.momxyz.y;
             self.bob = x * x + y * y;
 
             if self.bob > MAX_BOB {
@@ -374,12 +375,12 @@ impl Player {
 
             // TODO: if ((player->cheats & CF_NOMOMENTUM) || !onground)
             if !self.onground {
-                self.viewz = mobj.z + VIEWHEIGHT;
+                self.viewz = mobj.xyz.z + VIEWHEIGHT;
                 if self.viewz > mobj.ceilingz - 4.0 {
                     self.viewz = mobj.ceilingz - 4.0;
                 }
 
-                self.viewz = mobj.z + self.viewheight;
+                self.viewz = mobj.xyz.z + self.viewheight;
             }
 
             // Need to shunt finesine left by 13 bits?
@@ -416,7 +417,7 @@ impl Player {
                 }
             }
 
-            self.viewz = mobj.z + self.viewheight + bob;
+            self.viewz = mobj.xyz.z + self.viewheight + bob;
 
             if self.viewz > mobj.ceilingz - 4.0 {
                 self.viewz = mobj.ceilingz - 4.0;
@@ -435,7 +436,7 @@ impl Player {
                 mobj.angle += a;
             }
 
-            self.onground = mobj.z <= mobj.floorz;
+            self.onground = mobj.xyz.z <= mobj.floorz;
 
             if self.cmd.forwardmove != 0 && self.onground {
                 let angle = mobj.angle;
@@ -518,7 +519,7 @@ impl Player {
             let mobj = unsafe { &mut *mobj };
             let mut sector = mobj.subsector.sector.clone();
 
-            if mobj.z != sector.floorheight {
+            if mobj.xyz.z != sector.floorheight {
                 return;
             }
 
@@ -726,6 +727,7 @@ impl Player {
         true
     }
 
+    /// Shoot, attack, chainsaw things
     pub(crate) fn fire_weapon(&mut self) {
         if let Some(mobj) = self.mobj {
             let mobj = unsafe { &mut *mobj };
@@ -1011,14 +1013,14 @@ impl Player {
                 info!("You died! Press use-button to respawn");
             }
 
-            self.onground = mobj.z <= mobj.floorz;
+            self.onground = mobj.xyz.z <= mobj.floorz;
             self.calculate_height(level.level_time);
 
             if let Some(attacker) = self.attacker {
                 let attacker = unsafe { &mut *attacker };
                 if !std::ptr::eq(mobj, attacker) {
-                    let angle = point_to_angle_2(attacker.xy, mobj.xy);
-                    let delta = mobj.angle.unit().angle_to(angle.unit());
+                    let angle = point_to_angle_2(attacker.xyz, mobj.xyz);
+                    let delta = mobj.angle.unit_vec2().angle_to(angle.unit_vec2());
 
                     if delta.abs() <= ANG5 {
                         mobj.angle = angle;

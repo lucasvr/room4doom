@@ -6,7 +6,7 @@ use crate::level::map_defs::{BBox, LineDef, Node, Sector, Segment, SideDef, Slop
 use crate::log::info;
 use crate::utilities::{bam_to_radian, circle_line_collide};
 use crate::{LineDefFlags, MapPtr, PicData};
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 #[cfg(Debug)]
 use log::error;
 use log::warn;
@@ -21,8 +21,8 @@ pub const IS_SSECTOR_MASK: u32 = 0x80000000;
 /// rectangle enclosing the level area
 #[derive(Default)]
 pub struct MapExtents {
-    pub min_vertex: Vec2,
-    pub max_vertex: Vec2,
+    pub min_vertex: Vec3,
+    pub max_vertex: Vec3,
     pub width: f32,
     pub height: f32,
     pub automap_scale: f32,
@@ -44,7 +44,7 @@ pub struct MapData {
     /// array may never be resized or it will invalidate references and
     /// pointers
     things: Vec<WadThing>,
-    vertexes: Vec<Vec2>,
+    vertexes: Vec<Vec3>,
     pub linedefs: Vec<LineDef>,
     pub sectors: Vec<Sector>,
     sidedefs: Vec<SideDef>,
@@ -60,7 +60,7 @@ impl MapData {
         // set the min/max to first vertex so we have a baseline
         // that isn't 0 causing comparison issues, eg; if it's 0,
         // then a min vertex of -3542 won't be set since it's negative
-        let mut check = |v: Vec2| {
+        let mut check = |v: Vec3| {
             if self.extents.min_vertex.x > v.x {
                 self.extents.min_vertex.x = v.x;
             } else if self.extents.max_vertex.x < v.x {
@@ -188,14 +188,14 @@ impl MapData {
     fn load_vertexes(&mut self, map_name: &str, wad: &WadData, extended: Option<&WadExtendedMap>) {
         self.vertexes = wad
             .vertex_iter(map_name)
-            .map(|v| Vec2::new(v.x, v.y))
+            .map(|v| Vec3::new(v.x, v.y, 0.0))
             .collect();
         info!("{}: Loaded {} vertexes", map_name, self.vertexes.len());
 
         if let Some(ext) = extended.as_ref() {
             self.vertexes.reserve(ext.vertexes.len());
             for v in ext.vertexes.iter() {
-                self.vertexes.push(Vec2::new(v.x, v.y));
+                self.vertexes.push(Vec3::new(v.x, v.y, 0.0));
             }
             info!("{}: Loaded {} zdoom vertexes", map_name, ext.vertexes.len());
         }
@@ -305,7 +305,7 @@ impl MapData {
                 LineDef {
                     v1,
                     v2,
-                    delta: Vec2::new(dx, dy),
+                    delta: Vec3::new(dx, dy, 0.0),
                     flags: l.flags as u32,
                     special: l.special,
                     tag: l.sector_tag,
@@ -457,17 +457,17 @@ impl MapData {
         let parse_nodes = |n: WadNode| {
             let bounding_boxes = [
                 [
-                    Vec2::new(n.bboxes[0][2] as f32, n.bboxes[0][0] as f32),
-                    Vec2::new(n.bboxes[0][3] as f32, n.bboxes[0][1] as f32),
+                    Vec3::new(n.bboxes[0][2] as f32, n.bboxes[0][0] as f32, 0.0),
+                    Vec3::new(n.bboxes[0][3] as f32, n.bboxes[0][1] as f32, 0.0),
                 ],
                 [
-                    Vec2::new(n.bboxes[1][2] as f32, n.bboxes[1][0] as f32),
-                    Vec2::new(n.bboxes[1][3] as f32, n.bboxes[1][1] as f32),
+                    Vec3::new(n.bboxes[1][2] as f32, n.bboxes[1][0] as f32, 0.0),
+                    Vec3::new(n.bboxes[1][3] as f32, n.bboxes[1][1] as f32, 0.0),
                 ],
             ];
             Node {
-                xy: Vec2::new(n.x as f32, n.y as f32),
-                delta: Vec2::new(n.dx as f32, n.dy as f32),
+                xyz: Vec3::new(n.x as f32, n.y as f32, 0.0),
+                delta: Vec3::new(n.dx as f32, n.dy as f32, 0.0),
                 bboxes: bounding_boxes,
                 children: n.children,
             }
@@ -509,7 +509,7 @@ impl MapData {
     /// objects.
     ///
     /// Doom function name  `R_PointInSubsector`
-    pub fn point_in_subsector_raw(&mut self, point: Vec2) -> MapPtr<SubSector> {
+    pub fn point_in_subsector_raw(&mut self, point: Vec3) -> MapPtr<SubSector> {
         let mut node_id = self.start_node();
         let mut node;
         let mut side;
@@ -529,7 +529,7 @@ impl MapData {
         MapPtr::new(&mut self.subsectors[(node_id ^ IS_SSECTOR_MASK) as usize])
     }
 
-    pub fn point_in_subsector(&mut self, point: Vec2) -> &SubSector {
+    pub fn point_in_subsector(&mut self, point: Vec3) -> &SubSector {
         let mut node_id = self.start_node();
         let mut node;
         let mut side;
@@ -631,7 +631,7 @@ pub fn set_sector_sound_origin(sector: &mut Sector) {
     let mut maxx = sector.lines[0].v2.x;
     let mut maxy = sector.lines[0].v2.y;
 
-    let mut check = |v: Vec2| {
+    let mut check = |v: Vec3| {
         if minx > v.x {
             minx = v.x;
         } else if maxx < v.x {
@@ -649,7 +649,11 @@ pub fn set_sector_sound_origin(sector: &mut Sector) {
         check(line.v1);
         check(line.v2);
     }
-    sector.sound_origin = Vec2::new(minx + ((maxx - minx) / 2.0), miny + ((maxy - miny) / 2.0));
+    sector.sound_origin = Vec3::new(
+        minx + ((maxx - minx) / 2.0),
+        miny + ((maxy - miny) / 2.0),
+        0.0,
+    );
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -667,12 +671,12 @@ impl Default for BSPTraceType {
 #[derive(Debug, Default)]
 pub struct BSPTrace {
     radius: f32,
-    pub origin: Vec2,
-    origin_left: Vec2,
-    origin_right: Vec2,
-    pub endpoint: Vec2,
-    endpoint_left: Vec2,
-    endpoint_right: Vec2,
+    pub origin: Vec3,
+    origin_left: Vec3,
+    origin_right: Vec3,
+    pub endpoint: Vec3,
+    endpoint_left: Vec3,
+    endpoint_right: Vec3,
     pub nodes: Vec<u32>,
     /// If it is a line_trace. If not then it is a radius trace.
     trace_type: BSPTraceType,
@@ -681,26 +685,26 @@ pub struct BSPTrace {
 impl BSPTrace {
     /// Setup the trace for a line trace. Use `find_line_intercepts()` to find
     /// all intersections.
-    pub fn new_line(origin: Vec2, endpoint: Vec2, radius: f32) -> Self {
-        let forward = Angle::from_vector(endpoint - origin);
-        let back = Angle::from_vector(origin - endpoint);
-        let left_rad_vec = (forward + FRAC_PI_2).unit() * radius;
-        let right_rad_vec = (forward - FRAC_PI_2).unit() * radius;
+    pub fn new_line(origin: Vec3, endpoint: Vec3, radius: f32) -> Self {
+        let forward = Angle::from_vector_xy(endpoint - origin);
+        let back = Angle::from_vector_xy(origin - endpoint);
+        let left_rad_vec = (forward + FRAC_PI_2).unit_vec3() * radius;
+        let right_rad_vec = (forward - FRAC_PI_2).unit_vec3() * radius;
 
         Self {
-            origin: origin + back.unit() * radius,
-            origin_left: origin + left_rad_vec + back.unit() * radius,
-            origin_right: origin + right_rad_vec + back.unit() * radius,
-            endpoint: endpoint + forward.unit() * radius,
-            endpoint_left: endpoint + left_rad_vec + forward.unit() * radius,
-            endpoint_right: endpoint + right_rad_vec + forward.unit() * radius,
+            origin: origin + back.unit_vec3() * radius,
+            origin_left: origin + left_rad_vec + back.unit_vec3() * radius,
+            origin_right: origin + right_rad_vec + back.unit_vec3() * radius,
+            endpoint: endpoint + forward.unit_vec3() * radius,
+            endpoint_left: endpoint + left_rad_vec + forward.unit_vec3() * radius,
+            endpoint_right: endpoint + right_rad_vec + forward.unit_vec3() * radius,
             radius,
             nodes: Vec::with_capacity(20),
             trace_type: BSPTraceType::Line,
         }
     }
 
-    pub fn new_radius(origin: Vec2, radius: f32) -> Self {
+    pub fn new_radius(origin: Vec3, radius: f32) -> Self {
         Self {
             origin,
             radius,
@@ -801,7 +805,7 @@ impl BSPTrace {
         }
 
         let node = &map.nodes[node_id as usize];
-        let l_start = node.xy;
+        let l_start = node.xyz;
         let l_end = l_start + node.delta;
         let side = node.point_on_side(&self.origin);
 
@@ -825,7 +829,7 @@ mod tests {
     use crate::angle::Angle;
     use crate::level::map_data::{BSPTrace, MapData, IS_SSECTOR_MASK};
     use crate::{Node, PicData};
-    use glam::Vec2;
+    use glam::Vec3;
     use std::f32::consts::{FRAC_PI_2, PI};
     use wad::extended::WadExtendedMap;
     use wad::types::{WadLineDef, WadSideDef};
@@ -851,11 +855,11 @@ mod tests {
         assert_eq!(
             map.nodes[666],
             Node {
-                xy: Vec2::new(12.0, -342.0),
-                delta: Vec2::new(0.0, -20.0),
+                xyz: Vec3::new(12.0, -342.0, 0.0),
+                delta: Vec3::new(0.0, -20.0, 0.0),
                 bboxes: [
-                    [Vec2::new(0.0, -342.0), Vec2::new(12.0, -362.0)],
-                    [Vec2::new(12.0, -333.0), Vec2::new(24.0, -371.0)]
+                    [Vec3::new(0.0, -342.0, 0.0), Vec3::new(12.0, -362.0, 0.0)],
+                    [Vec3::new(12.0, -333.0, 0.0), Vec3::new(24.0, -371.0, 0.0)]
                 ],
                 children: [665, 2147484322]
             }
@@ -869,12 +873,13 @@ mod tests {
         // sidenum: 4387
         let mut success = false;
         for (i, seg) in map.segments().iter().enumerate() {
-            if seg.v1 == Vec2::new(496.0, -1072.0) && seg.v2 == Vec2::new(496.0, -1040.0) {
+            if seg.v1 == Vec3::new(496.0, -1072.0, 0.0) && seg.v2 == Vec3::new(496.0, -1040.0, 0.0)
+            {
                 assert_eq!(ext.segments[i].linedef, 2670);
                 let v1 = &map.vertexes[ext.segments[i].start_vertex as usize];
                 let v2 = &map.vertexes[ext.segments[i].end_vertex as usize];
-                assert_eq!(v1, &Vec2::new(496.0, -1072.0));
-                assert_eq!(v2, &Vec2::new(496.0, -1040.0));
+                assert_eq!(v1, &Vec3::new(496.0, -1072.0, 0.0));
+                assert_eq!(v2, &Vec3::new(496.0, -1040.0, 0.0));
 
                 dbg!(i, &ext.segments[i]);
                 assert_eq!(ext.segments[i].linedef, 2670);
@@ -938,8 +943,8 @@ mod tests {
         let mut map = MapData::default();
         map.load("MAP20", &pic_data, &wad);
         // line 1590
-        assert_eq!(map.linedefs[1590].v1, Vec2::new(-560.0, -3952.0));
-        assert_eq!(map.linedefs[1590].v2, Vec2::new(-560.0, -3920.0));
+        assert_eq!(map.linedefs[1590].v1, Vec3::new(-560.0, -3952.0, 0.0));
+        assert_eq!(map.linedefs[1590].v2, Vec3::new(-560.0, -3920.0, 0.0));
         assert_eq!(map.linedefs[1590].front_sidedef.midtexture, Some(1657));
         assert_eq!(
             map.linedefs[1590].back_sidedef.as_ref().unwrap().midtexture,
@@ -964,13 +969,13 @@ mod tests {
         let wad = WadData::new("../doom1.wad".into());
         let mut map = MapData::default();
         map.load("E1M1", &PicData::default(), &wad);
-        let origin = Vec2::new(710.0, -3400.0); // left corner from start
-        let endpoint = Vec2::new(710.0, -3000.0); // 3 sectors up
+        let origin = Vec3::new(710.0, -3400.0, 0.0); // left corner from start
+        let endpoint = Vec3::new(710.0, -3000.0, 0.0); // 3 sectors up
 
-        // let origin = Vec2::new(1056.0, -3616.0); // player start
-        // let endpoint = Vec2::new(1088.0, -2914.0); // corpse ahead, 10?
-        //let endpoint = Vec2::new(1340.0, -2884.0); // ?
-        //let endpoint = Vec2::new(2912.0, -2816.0);
+        // let origin = Vec3::new(1056.0, -3616.0); // player start
+        // let endpoint = Vec3::new(1088.0, -2914.0); // corpse ahead, 10?
+        //let endpoint = Vec3::new(1340.0, -2884.0); // ?
+        //let endpoint = Vec3::new(2912.0, -2816.0);
 
         let mut bsp_trace = BSPTrace::new_line(origin, endpoint, 1.0);
         // bsp_trace.trace_to_point(&map);
@@ -991,13 +996,13 @@ mod tests {
         //     }
         // }
 
-        let _endpoint = Vec2::new(710.0, -3000.0); // 3 sectors up
+        let _endpoint = Vec3::new(710.0, -3000.0, 0.0); // 3 sectors up
         let segs = map.segments();
         // wander around the coords of the subsector corner from player start
         let mut count = 0;
         for x in 705..895 {
             for y in -3551..-3361 {
-                bsp_trace.origin = Vec2::new(x as f32, y as f32);
+                bsp_trace.origin = Vec3::new(x as f32, y as f32, 0.0);
                 bsp_trace.find_line_inner(map.start_node, &map, &mut count);
 
                 // Sector the starting vector is in. 3 segs attached
@@ -1189,7 +1194,7 @@ mod tests {
         map.load("E1M1", &PicData::default(), &wad);
 
         // The actual location of THING0
-        let player = Vec2::new(1056.0, -3616.0);
+        let player = Vec3::new(1056.0, -3616.0, 0.0);
         let subsector = map.point_in_subsector_raw(player);
         //assert_eq!(subsector_id, Some(103));
         assert_eq!(subsector.seg_count, 5);
@@ -1203,8 +1208,8 @@ mod tests {
         map.load("E1M1", &PicData::default(), &wad);
 
         let nodes = map.get_nodes();
-        assert_eq!(nodes[0].xy.x as i32, 1552);
-        assert_eq!(nodes[0].xy.y as i32, -2432);
+        assert_eq!(nodes[0].xyz.x as i32, 1552);
+        assert_eq!(nodes[0].xyz.y as i32, -2432);
         assert_eq!(nodes[0].delta.x as i32, 112);
         assert_eq!(nodes[0].delta.y as i32, 0);
 
@@ -1219,8 +1224,8 @@ mod tests {
         assert_eq!(nodes[0].children[0], 2147483648);
         assert_eq!(nodes[0].children[1], 2147483649);
 
-        assert_eq!(nodes[235].xy.x as i32, 2176);
-        assert_eq!(nodes[235].xy.y as i32, -3776);
+        assert_eq!(nodes[235].xyz.x as i32, 2176);
+        assert_eq!(nodes[235].xyz.y as i32, -3776);
         assert_eq!(nodes[235].delta.x as i32, 0);
         assert_eq!(nodes[235].delta.y as i32, -32);
         assert_eq!(nodes[235].children[0], 128);

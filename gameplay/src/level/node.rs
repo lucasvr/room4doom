@@ -1,16 +1,16 @@
 use crate::level::map_defs::Node;
 
 // use crate::play::utilities::ray_to_line_intersect;
-use glam::Vec2;
+use glam::Vec3;
 
 impl Node {
     /// R_PointOnSide
     ///
     /// Determine with cross-product which side of a splitting line the point is
     /// on
-    pub fn point_on_side(&self, v: &Vec2) -> usize {
-        let dx = v.x - self.xy.x;
-        let dy = v.y - self.xy.y;
+    pub fn point_on_side(&self, v: &Vec3) -> usize {
+        let dx = v.x - self.xyz.x;
+        let dy = v.y - self.xyz.y;
 
         if (self.delta.y * dx) > (dy * self.delta.x) {
             return 0;
@@ -18,7 +18,7 @@ impl Node {
         1
     }
 
-    pub fn point_in_bounds(&self, v: &Vec2, side: usize) -> bool {
+    pub fn point_in_bounds(&self, v: Vec3, side: usize) -> bool {
         if v.x > self.bboxes[side][0].x
             && v.x < self.bboxes[side][1].x
             && v.y < self.bboxes[side][0].y

@@ -10,7 +10,7 @@ use crate::level::map_data::BSPTrace;
 use crate::level::map_defs::{BBox, LineDef, SlopeType};
 use crate::level::Level;
 use crate::MapPtr;
-use glam::Vec2;
+use glam::Vec3;
 
 const FRACBITS: i32 = 16;
 const FRACUNIT: f32 = (1 << FRACBITS) as f32;
@@ -78,17 +78,17 @@ pub fn p_subrandom() -> i32 {
 /// Is divline + trace types
 #[derive(Debug, Clone, Copy)]
 pub struct Trace {
-    pub xy: Vec2,
-    pub dxy: Vec2,
+    pub xyz: Vec3,
+    pub dxyz: Vec3,
 }
 
 impl Trace {
-    pub fn new(xy: Vec2, dxy: Vec2) -> Self {
-        Self { xy, dxy }
+    pub fn new(xyz: Vec3, dxyz: Vec3) -> Self {
+        Self { xyz, dxyz }
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Intercept {
     pub frac: f32,
     pub line: Option<MapPtr<LineDef>>,
@@ -195,12 +195,12 @@ pub fn box_on_line_side(tmbox: &BBox, ld: &LineDef) -> i32 {
             p2 = (tmbox.left > ld.v1.x) as i32;
         }
         SlopeType::Positive => {
-            p1 = ld.point_on_side(Vec2::new(tmbox.left, tmbox.top)) as i32;
-            p2 = ld.point_on_side(Vec2::new(tmbox.right, tmbox.bottom)) as i32;
+            p1 = ld.point_on_side(Vec3::new(tmbox.left, tmbox.top, 0.0)) as i32;
+            p2 = ld.point_on_side(Vec3::new(tmbox.right, tmbox.bottom, 0.0)) as i32;
         }
         SlopeType::Negative => {
-            p1 = ld.point_on_side(Vec2::new(tmbox.right, tmbox.top)) as i32;
-            p2 = ld.point_on_side(Vec2::new(tmbox.left, tmbox.bottom)) as i32;
+            p1 = ld.point_on_side(Vec3::new(tmbox.right, tmbox.top, 0.0)) as i32;
+            p2 = ld.point_on_side(Vec3::new(tmbox.left, tmbox.bottom, 0.0)) as i32;
         }
     }
 
@@ -210,15 +210,15 @@ pub fn box_on_line_side(tmbox: &BBox, ld: &LineDef) -> i32 {
     -1
 }
 
-pub fn point_to_angle_2(point1: Vec2, point2: Vec2) -> Angle {
+pub fn point_to_angle_2(point1: Vec3, point2: Vec3) -> Angle {
     let x = point1.x - point2.x;
     let y = point1.y - point2.y;
     Angle::new(y.atan2(x))
 }
 
 pub fn path_traverse(
-    origin: Vec2,
-    endpoint: Vec2,
+    origin: Vec3,
+    endpoint: Vec3,
     flags: i32,
     level: &mut Level,
     trav: impl FnMut(&mut Intercept) -> bool,
@@ -256,9 +256,7 @@ pub fn path_traverse(
             return false; // early out
         }
     }
-
     intercepts.sort();
-
     traverse_intercepts(&mut intercepts, 1.0, trav)
 }
 
@@ -357,20 +355,20 @@ fn add_thing_intercept(
 
     // Diagonals are too unrealiable for first check so use
     // Use the seg check to limit the range
-    if !circle_seg_collide(thing.xy, thing.radius, trace.xy, trace.xy + trace.dxy) {
+    if !circle_seg_collide(thing.xyz, thing.radius, trace.xyz, trace.xyz + trace.dxyz) {
         return true;
     }
     // Get vector clockwise-perpendicular to trace
     let r = thing.radius;
-    let p = Vec2::new(trace.xy.y, -trace.xy.x).normalize() * r;
-    let v1 = thing.xy + p;
-    let v2 = thing.xy - p;
+    let p = Vec3::new(trace.xyz.y, -trace.xyz.x, trace.xyz.z).normalize() * r;
+    let v1 = thing.xyz + p;
+    let v2 = thing.xyz - p;
 
     let dl = Trace::new(v1, v2 - v1);
     let frac = intercept_vector(trace, dl);
 
     // println!("Passing through {:?}, from x{},y{}, to x{},y{}, r{} f{}",
-    // thing.kind, trace.xy.x, trace.xy.y, thing.xy.x, thing.xy.y, thing.radius,
+    // thing.kind, trace.xy.x, trace.xy.y, thing.xyz.x, thing.xyz.y, thing.radius,
     // frac);
 
     // Skip if the trace doesn't intersect this line
@@ -387,11 +385,11 @@ fn add_thing_intercept(
 }
 
 // Determine which side of the trace the vector point is on
-pub fn point_on_side(trace: Trace, v2: Vec2) -> usize {
-    let dx = v2.x - trace.xy.x;
-    let dy = v2.y - trace.xy.y;
+pub fn point_on_side(trace: Trace, v2: Vec3) -> usize {
+    let dx = v2.x - trace.xyz.x;
+    let dy = v2.y - trace.xyz.y;
 
-    if (dy * trace.dxy.x) <= (trace.dxy.y * dx) {
+    if (dy * trace.dxyz.x) <= (trace.dxyz.y * dx) {
         // Front side
         return 0;
     }
@@ -407,11 +405,11 @@ pub fn point_on_side(trace: Trace, v2: Vec2) -> usize {
 /// P_InterceptVector
 fn intercept_vector(v2: Trace, v1: Trace) -> f32 {
     // Doom does `v1->dy >> 8`, this is  x * 0.00390625
-    let denominator = (v1.dxy.y * v2.dxy.x) - (v1.dxy.x * v2.dxy.y);
+    let denominator = (v1.dxyz.y * v2.dxyz.x) - (v1.dxyz.x * v2.dxyz.y);
     if denominator == f32::EPSILON {
         return -0.0;
     }
-    let numerator = ((v1.xy.x - v2.xy.x) * v1.dxy.y) + ((v2.xy.y - v1.xy.y) * v1.dxy.x);
+    let numerator = ((v1.xyz.x - v2.xyz.x) * v1.dxyz.y) + ((v2.xyz.y - v1.xyz.y) * v1.dxyz.x);
     numerator / denominator
 }
 
@@ -421,11 +419,10 @@ fn intercept_vector(v2: Trace, v1: Trace) -> f32 {
 // }
 
 /// True if the line segment from point1 to point2 penetrates the circle
-
-pub fn circle_seg_collide(c_origin: Vec2, c_radius: f32, s_start: Vec2, s_end: Vec2) -> bool {
+pub fn circle_seg_collide(c_origin: Vec3, c_radius: f32, s_start: Vec3, s_end: Vec3) -> bool {
     let lc = c_origin - s_start;
     let d = s_end - s_start;
-    let p = project_vec2(lc, d);
+    let p = project_vec2d(lc, d);
     let nearest = s_start + p;
 
     if circle_point_intersect(c_origin, c_radius, nearest)
@@ -438,15 +435,16 @@ pub fn circle_seg_collide(c_origin: Vec2, c_radius: f32, s_start: Vec2, s_end: V
     false
 }
 
-pub fn circle_line_collide(c_origin: Vec2, c_radius: f32, l_start: Vec2, l_end: Vec2) -> bool {
+pub fn circle_line_collide(c_origin: Vec3, c_radius: f32, l_start: Vec3, l_end: Vec3) -> bool {
     let lc = c_origin - l_start;
-    let p = project_vec2(lc, l_end - l_start);
+    let p = project_vec2d(lc, l_end - l_start);
     let nearest = l_start + p;
 
     circle_point_intersect(c_origin, c_radius, nearest)
 }
 
-fn project_vec2(this: Vec2, onto: Vec2) -> Vec2 {
+/// Do a 2d XY projection. Zeroes out the Z component in the `Vec3` copy internally.
+fn project_vec2d(this: Vec3, onto: Vec3) -> Vec3 {
     let d = onto.dot(onto);
     if d > 0.0 {
         let dp = this.dot(onto);
@@ -455,7 +453,10 @@ fn project_vec2(this: Vec2, onto: Vec2) -> Vec2 {
     onto
 }
 
-pub fn circle_point_intersect(origin: Vec2, radius: f32, point: Vec2) -> bool {
+/// Do a 2d XY intersection. Zeroes out the Z component in the `Vec3` copy internally.
+pub fn circle_point_intersect(mut origin: Vec3, radius: f32, mut point: Vec3) -> bool {
+    origin.z = 0.0;
+    point.z = 0.0;
     let dist = point - origin;
     let len = dist.length();
     if len < radius {

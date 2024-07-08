@@ -1,6 +1,6 @@
 use std::ptr;
 
-use glam::Vec2;
+use glam::Vec3;
 
 use crate::info::MapObjKind;
 use crate::level::map_defs::LineDef;
@@ -42,17 +42,17 @@ pub fn teleport(
             }) {
                 let level = unsafe { &mut *thing.level };
 
-                let old_xy = thing.xy;
-                let old_z = thing.z;
+                let old_xy = thing.xyz;
+                let old_z = thing.xyz.z;
                 let endpoint = thinker.mobj();
                 if let Some(player) = thing.player_mut() {
                     player.viewz = old_z + player.viewheight;
                 }
 
-                if !teleport_move(endpoint.xy, thing, level) {
+                if !teleport_move(endpoint.xyz, thing, level) {
                     return false;
                 }
-                thing.z = endpoint.z;
+                thing.xyz.z = endpoint.xyz.z;
 
                 let fog = MapObject::spawn_map_object(
                     old_xy.x,
@@ -67,9 +67,9 @@ pub fn teleport(
 
                 let an = endpoint.angle;
                 let fog = MapObject::spawn_map_object(
-                    endpoint.xy.x + 20.0 * an.cos(),
-                    endpoint.xy.y + 20.0 * an.sin(),
-                    endpoint.z as i32,
+                    endpoint.xyz.x + 20.0 * an.cos(),
+                    endpoint.xyz.y + 20.0 * an.sin(),
+                    endpoint.xyz.z as i32,
                     MapObjKind::MT_TFOG,
                     level,
                 );
@@ -81,8 +81,7 @@ pub fn teleport(
                     thing.reactiontime = 18;
                 }
                 thing.angle = endpoint.angle;
-                thing.momxy = Vec2::default();
-                thing.momz = 0.0;
+                thing.momxyz = Vec3::default();
 
                 return true;
             }
@@ -93,18 +92,18 @@ pub fn teleport(
 }
 
 /// Doom function nam `P_TeleportMove`
-pub fn teleport_move(xy: Vec2, thing: &mut MapObject, level: &mut Level) -> bool {
-    let new_subsect = &mut *level.map_data.point_in_subsector_raw(xy);
+pub fn teleport_move(xyz: Vec3, thing: &mut MapObject, level: &mut Level) -> bool {
+    let new_subsect = &mut *level.map_data.point_in_subsector_raw(xyz);
     let floorz = new_subsect.sector.floorheight;
     let ceilzz = new_subsect.sector.ceilingheight;
 
     // telefrag if needed
-    if !telefrag(thing, xy, new_subsect.sector.as_mut(), level.options.map) {
+    if !telefrag(thing, xyz, new_subsect.sector.as_mut(), level.options.map) {
         return false;
     }
     unsafe {
         thing.unset_thing_position();
-        thing.xy = xy;
+        thing.xyz = xyz;
         thing.floorz = floorz;
         thing.ceilingz = ceilzz;
         thing.set_thing_position();
@@ -114,7 +113,7 @@ pub fn teleport_move(xy: Vec2, thing: &mut MapObject, level: &mut Level) -> bool
 
 fn telefrag(
     this_thing: &mut MapObject,
-    new_xy: Vec2,
+    new_xyz: Vec3,
     sector: &mut Sector,
     game_map: usize,
 ) -> bool {
@@ -124,7 +123,7 @@ fn telefrag(
         }
 
         let dist = this_thing.radius + thing.radius;
-        if (thing.xy.x - new_xy.x).abs() >= dist || (thing.xy.y - new_xy.y).abs() >= dist {
+        if (thing.xyz.x - new_xyz.x).abs() >= dist || (thing.xyz.y - new_xyz.y).abs() >= dist {
             return true;
         }
 

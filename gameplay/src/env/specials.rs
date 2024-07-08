@@ -9,7 +9,8 @@ use crate::env::ceiling::{ev_do_ceiling, CeilKind};
 use crate::env::doors::{ev_do_door, DoorKind};
 use crate::env::floor::{ev_build_stairs, ev_do_floor, FloorKind, StairKind};
 use crate::env::lights::{
-    ev_start_light_strobing, ev_turn_light_on, ev_turn_tag_lights_off, FireFlicker, Glow, LightFlash, StrobeFlash, FASTDARK, SLOWDARK
+    ev_start_light_strobing, ev_turn_light_on, ev_turn_tag_lights_off, FireFlicker, Glow,
+    LightFlash, StrobeFlash, FASTDARK, SLOWDARK,
 };
 use crate::env::platforms::{ev_do_platform, ev_stop_platform, PlatKind};
 use crate::env::switch::{change_switch_texture, start_sector_sound};
@@ -22,7 +23,7 @@ use crate::pic::ButtonWhere;
 use crate::thing::MapObject;
 use crate::utilities::circle_line_collide;
 use crate::{Angle, MapObjFlag, MapPtr, PicData, TICRATE};
-use glam::Vec2;
+use glam::Vec3;
 use log::{debug, error, trace};
 use sound_traits::SfxName;
 use std::ptr;
@@ -169,7 +170,7 @@ fn change_sector(mut sector: MapPtr<Sector>, crunch: bool) -> bool {
             }
             next.run_mut_func_on_thinglist(|thing| {
                 let mut hit = false;
-                if circle_line_collide(thing.xy, thing.radius, line.v1, line.v2) {
+                if circle_line_collide(thing.xyz, thing.radius, line.v1, line.v2) {
                     trace!(
                         "Thing type {:?} is in affected neightbouring sector",
                         thing.kind
@@ -931,13 +932,13 @@ pub fn respawn_specials(level: &mut Level) {
     }
 
     if let Some(mthing) = level.respawn_queue.pop_back() {
-        let xy = Vec2::new(mthing.1.x as f32, mthing.1.y as f32);
+        let xyz = Vec3::new(mthing.1.x as f32, mthing.1.y as f32, 0.0);
 
         // spawn a teleport fog at the new spot
-        let ss = level.map_data.point_in_subsector(xy);
+        let ss = level.map_data.point_in_subsector(xyz);
         let floor = ss.sector.floorheight as i32;
         let fog = unsafe {
-            &mut *MapObject::spawn_map_object(xy.x, xy.y, floor, MapObjKind::MT_TFOG, level)
+            &mut *MapObject::spawn_map_object(xyz.x, xyz.y, floor, MapObjKind::MT_TFOG, level)
         };
         fog.start_sound(SfxName::Itmbk);
 
@@ -965,7 +966,7 @@ pub fn respawn_specials(level: &mut Level) {
         };
 
         // spawn it
-        let thing = unsafe { &mut *MapObject::spawn_map_object(xy.x, xy.y, z, kind, level) };
+        let thing = unsafe { &mut *MapObject::spawn_map_object(xyz.x, xyz.y, z, kind, level) };
         thing.angle = Angle::new((mthing.1.angle as f32).to_radians());
         thing.spawnpoint = mthing.1;
     }

@@ -1,7 +1,7 @@
 use crate::utilities::screen_to_angle;
 use gameplay::log::warn;
 use gameplay::{Angle, FlatPic, LineDefFlags, MapObject, PicData, Player, Segment};
-use glam::Vec2;
+use glam::Vec3;
 use render_target::PixelBuffer;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 use std::ptr::NonNull;
@@ -197,7 +197,7 @@ impl SegRender {
         let mobj = unsafe { player.mobj_unchecked() };
 
         let distangle = Angle::new(FRAC_PI_2 - offsetangle.rad()); // widescreen: Leave as is
-        let hyp = point_to_dist(seg.v1.x, seg.v1.y, mobj.xy); // verified correct
+        let hyp = point_to_dist(seg.v1.x, seg.v1.y, mobj.xyz); // verified correct
         self.rw_distance = hyp * distangle.sin(); // Correct??? Seems to be...
 
         ds_p.x1 = start;
@@ -569,7 +569,7 @@ impl SegRender {
                         let x_start = self.rw_startx as u32 as usize;
                         draw_flat_column(
                             ceil_tex,
-                            mobj.xy,
+                            mobj.xyz,
                             ceil_height,
                             flats_total_light,
                             x_start,
@@ -603,7 +603,7 @@ impl SegRender {
                     let x_start = self.rw_startx as u32 as usize;
                     draw_flat_column(
                         floor_tex,
-                        mobj.xy,
+                        mobj.xyz,
                         floor_height,
                         flats_total_light,
                         x_start,
@@ -783,7 +783,7 @@ pub fn draw_wall_column(
 
 pub fn draw_flat_column(
     texture: &FlatPic,
-    viewxy: Vec2,
+    viewxy: Vec3,
     plane_height: f32,
     total_light: usize,
     dc_x: usize,
