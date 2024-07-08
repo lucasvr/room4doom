@@ -817,7 +817,7 @@ fn a_painshootskull(actor: &mut MapObject, angle: Angle) {
             level,
         ));
         let mut ctrl = SubSectorMinMax::default();
-        if !skull.p_try_move(skull.xyz.x, skull.xyz.y, &mut ctrl) {
+        if !skull.p_try_move(skull.xyz, &mut ctrl) {
             skull.p_take_damage(None, None, false, 10000);
             return;
         }

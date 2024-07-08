@@ -629,7 +629,7 @@ impl MapObject {
         }
 
         self.xyz += self.momxyz / 2.0;
-        if !self.p_try_move(self.xyz.x, self.xyz.y, &mut SubSectorMinMax::default()) {
+        if !self.p_try_move(self.xyz, &mut SubSectorMinMax::default()) {
             self.p_explode_missile();
         }
     }
@@ -916,16 +916,16 @@ impl Think for MapObject {
             std::panic!("MapObject thinker was null");
         }
 
+        // TODO: combine movement for XY and Z
+        if (this.xyz.z - this.floorz).abs() > f32::EPSILON || this.momxyz.z != 0.0 {
+            this.p_z_movement();
+        }
         if this.momxyz.x != 0.0 || this.momxyz.y != 0.0 || MapObjFlag::Skullfly as u32 != 0 {
             this.p_xy_movement();
 
             if this.thinker_mut().should_remove() {
                 return true; // thing was removed
             }
-        }
-
-        if (this.xyz.z - this.floorz).abs() > f32::EPSILON || this.momxyz.z != 0.0 {
-            this.p_z_movement();
         }
 
         // cycle through states,

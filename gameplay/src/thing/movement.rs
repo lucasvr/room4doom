@@ -58,9 +58,7 @@ impl MapObject {
             }
         }
 
-        // adjust height
-        self.xyz.z += self.momxyz.z;
-
+        // Skulls and shit
         if self.flags & MapObjFlag::Float as u32 != 0 {
             if let Some(target) = self.target {
                 let target = unsafe { (*target).mobj() };
@@ -82,7 +80,6 @@ impl MapObject {
         }
 
         // clip movement
-
         if self.xyz.z <= self.floorz {
             // hit the floor
             // TODO: The lost soul correction for old demos
@@ -168,25 +165,19 @@ impl MapObject {
         // etc
         self.momxyz.x = self.momxyz.x.clamp(-MAXMOVE, MAXMOVE);
         self.momxyz.y = self.momxyz.y.clamp(-MAXMOVE, MAXMOVE);
-        let mut xmove = self.momxyz.x;
-        let mut ymove = self.momxyz.y;
-        let mut ptryx;
-        let mut ptryy;
+        let mut momentum = self.momxyz;
+        let mut try_move;
         loop {
-            if xmove > MAXMOVE / 2.0 || ymove > MAXMOVE / 2.0 {
-                ptryx = self.xyz.x + xmove / 2.0;
-                ptryy = self.xyz.y + ymove / 2.0;
-                xmove /= 2.0;
-                ymove /= 2.0;
+            if momentum.x > MAXMOVE / 2.0 || momentum.y > MAXMOVE / 2.0 {
+                try_move = self.xyz + momentum / 2.0;
+                momentum /= 2.0;
             } else {
-                ptryx = self.xyz.x + xmove;
-                ptryy = self.xyz.y + ymove;
-                xmove = 0.0;
-                ymove = 0.0;
+                try_move = self.xyz + momentum;
+                momentum = Vec3::default();
             }
 
             let mut ctrl = SubSectorMinMax::default();
-            if !self.p_try_move(ptryx, ptryy, &mut ctrl) {
+            if !self.p_try_move(try_move, &mut ctrl) {
                 if self.player.is_some() {
                     self.p_slide_move();
                 } else if self.flags & MapObjFlag::Missile as u32 != 0 {
@@ -208,7 +199,7 @@ impl MapObject {
                 }
             }
 
-            if xmove == 0.0 || ymove == 0.0 {
+            if (momentum.x == 0.0 || momentum.y == 0.0) && momentum.z == 0.0 {
                 break;
             }
         }
@@ -256,20 +247,17 @@ impl MapObject {
                 }
             }
         } else {
-            self.momxyz *= FRICTION;
+            self.momxyz.x *= FRICTION;
+            self.momxyz.y *= FRICTION;
         }
     }
 
     /// P_TryMove, merged with P_CheckPosition and using a more verbose/modern
     /// collision
-    pub(crate) fn p_try_move(
-        &mut self,
-        ptryx: f32,
-        ptryy: f32,
-        ctrl: &mut SubSectorMinMax,
-    ) -> bool {
+    ///
+    /// If `try_move` is allowed it is then set as the current position
+    pub(crate) fn p_try_move(&mut self, try_move: Vec3, ctrl: &mut SubSectorMinMax) -> bool {
         // P_CrossSpecialLine
-        let try_move = Vec3::new(ptryx, ptryy, self.xyz.z);
 
         ctrl.floatok = false;
         if !self.p_check_position(try_move, ctrl) {
@@ -489,15 +477,15 @@ impl MapObject {
 
         if thing.flags & MapObjFlag::Solid as u32 == MapObjFlag::Solid as u32 {
             // Already over it?
-            if self.xyz.z >= thing.xyz.z + thing.height {
+            if self.xyz.z > thing.xyz.z + thing.height {
                 // Step over it?
-                if thing.xyz.z + thing.height - self.xyz.z > 24.0 {
+                ctrl.min_floor_z = thing.xyz.z + thing.height;
+                if thing.xyz.z + thing.height - self.xyz.z < thing.height {
                     return false;
                 }
-                ctrl.min_floor_z = thing.xyz.z + thing.height;
                 return true; // over
             }
-            if self.xyz.z + thing.height <= thing.xyz.z {
+            if self.xyz.z + self.height < thing.xyz.z {
                 return true; // under
             }
         }
@@ -614,7 +602,7 @@ impl MapObject {
         let level = unsafe { &mut *self.level };
         loop {
             if hitcount == 3 {
-                self.stair_step();
+                self.slide_stair_step();
                 return;
             }
 
@@ -650,19 +638,15 @@ impl MapObject {
 
             if self.best_slide.best_slide_frac == 2.0 {
                 // The move most have hit the middle, so stairstep.
-                self.stair_step();
+                self.slide_stair_step();
                 return;
             }
 
             self.best_slide.best_slide_frac -= 0.031250;
             if self.best_slide.best_slide_frac > 0.0 {
                 let slide_move = self.momxyz * self.best_slide.best_slide_frac; // bestfrac
-                if !self.p_try_move(
-                    self.xyz.x + slide_move.x,
-                    self.xyz.y + slide_move.y,
-                    &mut SubSectorMinMax::default(),
-                ) {
-                    self.stair_step();
+                if !self.p_try_move(self.xyz + slide_move, &mut SubSectorMinMax::default()) {
+                    self.slide_stair_step();
                     return;
                 }
             }
@@ -687,7 +671,7 @@ impl MapObject {
             self.momxyz = slide_move;
 
             let endpoint = self.xyz + slide_move;
-            if self.p_try_move(endpoint.x, endpoint.y, &mut SubSectorMinMax::default()) {
+            if self.p_try_move(endpoint, &mut SubSectorMinMax::default()) {
                 return;
             }
 
@@ -733,18 +717,14 @@ impl MapObject {
         false
     }
 
-    fn stair_step(&mut self) {
+    fn slide_stair_step(&mut self) {
         // Line might have hit the middle, end-on?
-        if !self.p_try_move(
-            self.xyz.x,
-            self.xyz.y + self.momxyz.y,
-            &mut SubSectorMinMax::default(),
-        ) {
-            self.p_try_move(
-                self.xyz.x + self.momxyz.x,
-                self.xyz.y,
-                &mut SubSectorMinMax::default(),
-            );
+        let mut try1 = self.xyz;
+        try1.y += self.momxyz.y;
+        if !self.p_try_move(try1, &mut SubSectorMinMax::default()) {
+            let mut try2 = self.xyz;
+            try2.y += self.momxyz.x;
+            self.p_try_move(try2, &mut SubSectorMinMax::default());
         }
     }
 
@@ -966,11 +946,12 @@ impl MapObject {
             return false;
         }
 
-        let tryx = self.xyz.x + self.info.speed * DIR_XSPEED[self.movedir as usize];
-        let tryy = self.xyz.y + self.info.speed * DIR_YSPEED[self.movedir as usize];
+        let mut try_move = self.xyz;
+        try_move.x += self.info.speed * DIR_XSPEED[self.movedir as usize];
+        try_move.y += self.info.speed * DIR_YSPEED[self.movedir as usize];
 
         let mut specs = SubSectorMinMax::default();
-        if !self.p_try_move(tryx, tryy, &mut specs) {
+        if !self.p_try_move(try_move, &mut specs) {
             // open any specials
             // TODO: if (actor->flags & MF_FLOAT && floatok)
             if self.flags & MapObjFlag::Float as u32 != 0 && specs.floatok {
