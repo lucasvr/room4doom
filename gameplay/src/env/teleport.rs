@@ -49,7 +49,6 @@ pub fn teleport(
                     player.viewz = old_z + player.viewheight;
                 }
 
-                dbg!("???????");
                 if !teleport_move(endpoint.xyz, thing, level) {
                     return false;
                 }

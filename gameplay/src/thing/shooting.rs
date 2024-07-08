@@ -283,8 +283,8 @@ impl MapObject {
     fn target_within_min_dist(&self, target: &MapObject) -> bool {
         // skip the BSP trace if too far away
         let dist = self.xyz.distance_squared(target.xyz);
-        // approx 1500.0 units
-        dist < 2185300.3
+        // approx 1500.0 units * 2
+        dist < 2185300.3 * 2.0
     }
 
     /// Iterate through the available live players and check if there is a LOS
