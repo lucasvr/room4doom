@@ -186,7 +186,7 @@ pub(crate) fn a_chase(actor: &mut MapObject) {
 
     // // chase towards player
     actor.movecount -= 1;
-    if actor.movecount < 0 || !actor.do_move() {
+    if actor.movecount < 0 || !actor.do_enemy_move() {
         actor.new_chase_dir()
     }
 

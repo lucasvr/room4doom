@@ -7,7 +7,7 @@ license.workspace = true
 build = "../../build.rs"
 
 [features]
-safety_check = []
+safety_check = ["render-target/safety_check"]
 
 [dependencies]
 glam.workspace = true

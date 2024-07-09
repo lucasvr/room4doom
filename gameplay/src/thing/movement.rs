@@ -10,6 +10,7 @@ use log::{debug, error};
 
 use crate::angle::Angle;
 use crate::doom_def::{FLOATSPEED, USERANGE, VIEWHEIGHT};
+use crate::env::floor;
 use crate::env::specials::cross_special_line;
 use crate::env::switch::p_use_special_line;
 use crate::info::StateNum;
@@ -17,7 +18,7 @@ use crate::level::flags::LineDefFlags;
 use crate::level::map_data::BSPTrace;
 use crate::level::map_defs::{BBox, LineDef, SlopeType};
 use crate::utilities::{
-    box_on_line_side, p_random, path_traverse, BestSlide, Intercept, PortalZ, FRACUNIT_DIV4
+    box_on_line_side, circle_circle_intersect, p_random, path_traverse, BestSlide, Intercept, PortalZ, FRACUNIT_DIV4
 };
 use crate::{MapObjKind, MapObject, MapPtr};
 
@@ -168,7 +169,10 @@ impl MapObject {
         let mut momentum = self.momxyz;
         let mut try_move;
         loop {
-            if momentum.x > MAXMOVE / 2.0 || momentum.y > MAXMOVE / 2.0 {
+            if momentum.x > MAXMOVE / 2.0
+                || momentum.y > MAXMOVE / 2.0
+                || momentum.z > MAXMOVE / 2.0
+            {
                 try_move = self.xyz + momentum / 2.0;
                 momentum /= 2.0;
             } else {
@@ -204,17 +208,14 @@ impl MapObject {
             }
         }
 
-        // slow down
         if self.flags & (MapObjFlag::Missile as u32 | MapObjFlag::Skullfly as u32) != 0 {
             return; // no friction for missiles ever
         }
-
         if self.xyz.z > self.floorz {
             return; // no friction when airborne
         }
 
         let floorheight = self.subsector.sector.floorheight;
-
         if self.flags & MapObjFlag::Corpse as u32 != 0 {
             // do not stop sliding
             //  if halfway off a step with some momentum
@@ -233,18 +234,13 @@ impl MapObject {
             && self.momxyz.y > -STOPSPEED
             && self.momxyz.y < STOPSPEED
         {
-            if self.player.is_none() {
-                self.momxyz = Vec3::default();
-            } else if let Some(player) = self.player_mut() {
+            if let Some(player) = self.player_mut() {
                 if player.cmd.forwardmove == 0 && player.cmd.sidemove == 0 {
-                    // if in a walking frame, stop moving
-                    // TODO: What the everliving fuck is C doing here? You can't just subtract the
-                    // states array if ((player.mo.state - states) - PLAY_RUN1)
-                    // < 4 {
                     self.set_state(StateNum::PLAY);
-                    // }
                     self.momxyz = Vec3::default();
                 }
+            } else {
+                self.momxyz = Vec3::default();
             }
         } else {
             self.momxyz.x *= FRICTION;
@@ -475,22 +471,42 @@ impl MapObject {
             return solid;
         }
 
-        if thing.flags & MapObjFlag::Solid as u32 == MapObjFlag::Solid as u32 {
+        if thing.flags & MapObjFlag::Shootable as u32 != 0
+            && thing.flags & MapObjFlag::Solid as u32 != 0
+            && self.player().is_some()
+        {
             // Already over it?
-            if self.xyz.z > thing.xyz.z + thing.height {
-                // Step over it?
-                ctrl.min_floor_z = thing.xyz.z + thing.height;
-                if thing.xyz.z + thing.height - self.xyz.z < thing.height {
-                    return false;
+            let thing_top_z = thing.xyz.z + thing.height;
+            let self_top_z = self.xyz.z + self.height;
+            if self.xyz.z + 0.0 >= thing_top_z {
+                // Walk over the top
+                if thing_top_z > self.floorz {
+                    self.floorz = thing_top_z;
+                    ctrl.min_floor_z = thing_top_z;
                 }
-                return true; // over
+                if thing.xyz.z < self.ceilingz {
+                    self.ceilingz = thing.xyz.z;
+                    ctrl.max_ceil_z = thing.xyz.z;
+                }
+                return true;
+            } else if self_top_z <= thing.xyz.z {
+                if thing.xyz.z < self.ceilingz {
+                    self.ceilingz = thing.xyz.z;
+                    ctrl.max_ceil_z = thing.xyz.z;
+                }
+                if thing_top_z > self.floorz {
+                    self.floorz = thing_top_z;
+                    ctrl.min_floor_z = thing_top_z;
+                }
+                return true;
             }
-            if self.xyz.z + self.height < thing.xyz.z {
-                return true; // under
+            if circle_circle_intersect(self.xyz, self.radius, thing.xyz, thing.radius) {
+                return true;
             }
+            return false;
         }
         // final failsafe
-        thing.flags & MapObjFlag::Solid as u32 != MapObjFlag::Solid as u32
+        thing.flags & MapObjFlag::Solid as u32 != 0
     }
 
     /// PIT_CheckLine
@@ -934,14 +950,14 @@ impl MapObject {
     /// returns false, otherwise tries to open a door if the block is one, and
     /// continue.
     pub(crate) fn try_walk(&mut self) -> bool {
-        if !self.do_move() {
+        if !self.do_enemy_move() {
             return false;
         }
         self.movecount = p_random() & 15;
         true
     }
 
-    pub(crate) fn do_move(&mut self) -> bool {
+    pub(crate) fn do_enemy_move(&mut self) -> bool {
         if self.movedir == MoveDir::None {
             return false;
         }

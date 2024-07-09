@@ -10,7 +10,7 @@ use crate::{LineDefFlags, MapPtr, PicData};
 use glam::{Vec2, Vec3};
 #[cfg(Debug)]
 use log::error;
-use log::warn;
+use log::{debug, warn};
 use wad::extended::{ExtendedNodeType, NodeLumpType, WadExtendedMap};
 use wad::types::*;
 use wad::WadData;
@@ -616,6 +616,7 @@ impl MapData {
                         let y1 = linedef.v1.y;
                         vertex.x = (dx2 * x0 + dy2 * x1 + dxy * (y0 - y1)) / s;
                         vertex.y = (dy2 * y0 + dx2 * y1 + dxy * (x0 - x1)) / s;
+                        debug!("Moved vertex from {old} to {vertex}");
                         log.insert(old.to_string(), *vertex);
                     }
                     if step2 {

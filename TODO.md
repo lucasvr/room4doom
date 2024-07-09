@@ -9,6 +9,7 @@
 
 ## Features to add
 
+- [ ] Dehacked support
 - [ ] Lump name `SWITCHES`, extend the switch list (BOOM)
 - [ ] Lump name `ANIMATED`, extend the animated texture list (BOOM)
 - [ ] Lump name `TRANMAP` for transparency? (BOOM)

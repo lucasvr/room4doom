@@ -468,19 +468,19 @@ pub fn circle_point_intersect(mut origin: Vec3, radius: f32, mut point: Vec3) ->
 }
 
 //
-// pub fn circle_circle_intersect(
-//     origin: Vec2,
-//     origin_radius: f32,
-//     point: Vec2,
-//     point_radius: f32,
-// ) -> bool {
-//     let dist = point - origin;
-//     let len = dist.length();
-//     if len < origin_radius + point_radius {
-//         return true; // Some(len - radius);
-//     }
-//     false
-// }
+pub fn circle_circle_intersect(
+    origin: Vec3,
+    origin_radius: f32,
+    point: Vec3,
+    point_radius: f32,
+) -> bool {
+    let dist = point - origin;
+    let len = dist.length();
+    if len < origin_radius + point_radius {
+        return true; // Some(len - radius);
+    }
+    false
+}
 
 #[cfg(test)]
 mod tests {

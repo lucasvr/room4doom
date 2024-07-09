@@ -8,6 +8,7 @@ build = "../build.rs"
 
 [features]
 null_check = []
+safety_check = []
 
 [dependencies]
 sound-traits.workspace = true
