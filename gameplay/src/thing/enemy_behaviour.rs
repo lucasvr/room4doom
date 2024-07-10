@@ -17,13 +17,14 @@ use crate::env::doors::{ev_do_door, DoorKind};
 use crate::env::floor::{ev_do_floor, FloorKind};
 use crate::info::{StateNum, MOBJINFO};
 use crate::level::map_defs::{LineDef, SlopeType};
-use crate::thing::{MapObjFlag, MapObject, MoveDir};
+use crate::thing::{MapObjFlag, MapObject};
 use crate::thinker::{Thinker, ThinkerData};
 use crate::utilities::{p_random, point_to_angle_2, PortalZ};
 use crate::{
     teleport_move, Angle, GameMode, LineDefFlags, MapObjKind, MapPtr, Sector, Skill, MAXPLAYERS
 };
 
+use super::enemy_movement::MoveDir;
 use super::movement::SubSectorMinMax;
 
 /// This was only ever called with the player as the target, so it never follows

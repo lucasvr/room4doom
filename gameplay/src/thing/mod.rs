@@ -4,11 +4,13 @@
 //! `MapObject` is also used for moving doors, platforms, floors, and ceilings.
 
 mod interact;
+use enemy_movement::MoveDir;
 pub use interact::*;
 mod movement;
 pub use movement::*;
 use sound_traits::SfxName;
-pub(crate) mod enemy;
+pub mod enemy_behaviour;
+pub mod enemy_movement;
 mod shooting;
 
 use std::fmt::Debug;
@@ -917,15 +919,16 @@ impl Think for MapObject {
         }
 
         // TODO: combine movement for XY and Z
-        if (this.xyz.z - this.floorz).abs() > f32::EPSILON || this.momxyz.z != 0.0 {
-            this.p_z_movement();
-        }
+
         if this.momxyz.x != 0.0 || this.momxyz.y != 0.0 || MapObjFlag::Skullfly as u32 != 0 {
             this.p_xy_movement();
 
             if this.thinker_mut().should_remove() {
                 return true; // thing was removed
             }
+        }
+        if (this.xyz.z - this.floorz).abs() > f32::EPSILON || this.momxyz.z != 0.0 {
+            this.p_z_movement();
         }
 
         // cycle through states,
