@@ -11,6 +11,10 @@ default-run = "room4doom"
 name = "room4doom"
 path = "src/main.rs"
 
+[features]
+default = ["sdl2-snd"]
+sdl2-snd = []
+
 [dependencies]
 golem = { git = "https://github.com/flukejones/golem/" }
 
@@ -27,7 +31,7 @@ finale-doom.workspace = true
 statusbar-doom.workspace = true
 
 sound-traits.workspace = true
-sound-sdl2.workspace = true
+sound.workspace = true
 render-target.workspace = true
 render-soft.workspace = true
 wad.workspace = true

@@ -6,7 +6,6 @@ use gameplay::log::{error, info, warn};
 use input::config::InputConfig;
 use nanoserde::{DeRon, SerRon};
 use render_target::shaders::Shaders;
-use sound_sdl2::timidity::GusMemSize;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -92,7 +91,8 @@ pub struct UserConfig {
     pub sfx_vol: i32,
     pub mus_vol: i32,
     pub music_type: MusicType,
-    pub gus_mem_size: GusMemSize,
+    #[cfg(feature = "sdl2-snd")]
+    pub gus_mem_size: sound::GusMemSize,
     pub input: InputConfig,
 }
 

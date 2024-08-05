@@ -29,14 +29,12 @@ use gameplay::tic_cmd::{TicCmd, TIC_CMD_BUTTONS};
 use gameplay::{
     m_clear_random, respawn_specials, spawn_specials, update_specials, GameAction, GameMission, GameMode, GameOptions, Level, MapObject, PicData, Player, PlayerState, Skill, MAXPLAYERS
 };
-use gamestate_traits::sdl2::AudioSubsystem;
 use gamestate_traits::{GameState, GameTraits, SubsystemTrait, WorldInfo};
-use sound_nosnd::SndServerTx;
+use sound::SndServerTx;
 use std::iter::Peekable;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::vec::IntoIter;
-// use sound_sdl2::SndServerTx;
 use sound_traits::{MusTrack, SoundAction, SoundServer, SoundServerTic};
 use wad::types::WadPatch;
 use wad::WadData;
@@ -192,7 +190,6 @@ impl Game {
     pub fn new(
         mut options: GameOptions,
         mut wad: WadData,
-        snd_ctx: AudioSubsystem,
         sfx_vol: i32,
         mus_vol: i32,
     ) -> Game {
@@ -285,7 +282,7 @@ impl Game {
         info!("Init playloop state.");
 
         let snd_thread;
-        let snd_tx = match sound_sdl2::Snd::new(snd_ctx, &wad) {
+        let snd_tx = match sound::Snd::new(&wad) {
             Ok(mut s) => {
                 let tx = s.init().unwrap();
                 snd_thread = std::thread::spawn(move || loop {
@@ -299,7 +296,7 @@ impl Game {
             }
             Err(e) => {
                 warn!("Could not set up sound server: {e}");
-                let mut s = sound_nosnd::Snd::new(&wad).unwrap();
+                let mut s = sound::Snd::new(&wad).unwrap();
                 let tx = s.init().unwrap();
                 snd_thread = std::thread::spawn(move || loop {
                     if !s.tic() {

@@ -22,16 +22,21 @@ use gamestate::Game;
 use crate::config::UserConfig;
 use gameplay::log;
 use input::Input;
-use sound_sdl2::timidity::{make_timidity_cfg, GusMemSize};
 
-use crate::log::{info, warn};
 use wad::WadData;
 
-const SOUND_DIR: &str = "room4doom/sound/";
-const TIMIDITY_CFG: &str = "timidity.cfg";
 const BASE_DIR: &str = "room4doom/";
 
-fn setup_timidity(music_type: MusicType, gus_mem: GusMemSize, wad: &WadData) {
+#[cfg(feature = "sdl2-snd")]
+fn setup_timidity(user_config: &UserConfig, wad: &WadData) {
+    use crate::log::{info, warn};
+
+    const SOUND_DIR: &str = "room4doom/sound/";
+    const TIMIDITY_CFG: &str = "timidity.cfg";
+
+    let music_type = user_config.music_type;
+    let gus_mem = user_config.gus_mem_size;
+
     if music_type == MusicType::FluidSynth {
         set_var("SDL_MIXER_DISABLE_FLUIDSYNTH", "0");
         info!("Using fluidsynth for sound");
@@ -42,7 +47,7 @@ fn setup_timidity(music_type: MusicType, gus_mem: GusMemSize, wad: &WadData) {
         if path.exists() {
             let mut cache_dir = cache_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
             cache_dir.push(TIMIDITY_CFG);
-            if let Some(cfg) = make_timidity_cfg(wad, path, gus_mem) {
+            if let Some(cfg) = sound::timidity::make_timidity_cfg(wad, path, gus_mem) {
                 let mut file = File::create(cache_dir.as_path()).unwrap();
                 file.write_all(&cfg).unwrap();
                 set_var("SDL_MIXER_DISABLE_FLUIDSYNTH", "1");
@@ -56,6 +61,10 @@ fn setup_timidity(music_type: MusicType, gus_mem: GusMemSize, wad: &WadData) {
             info!("Using fluidsynth for sound");
         }
     }
+}
+
+#[cfg(not(feature = "sdl2-snd"))]
+fn setup_timidity(user_config: &UserConfig, wad: &WadData) {
 }
 
 /// The main `game-exe` crate should take care of initialising a few things
@@ -99,7 +108,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut user_config = UserConfig::load();
 
     let sdl_ctx = sdl2::init()?;
-    let snd_ctx = sdl_ctx.audio()?;
+    let _snd_ctx = sdl_ctx.audio()?;
     let video_ctx = sdl_ctx.video()?;
 
     let events = sdl_ctx.event_pump()?;
@@ -125,12 +134,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
 
     let wad = WadData::new(user_config.iwad.clone().into());
-    setup_timidity(user_config.music_type, user_config.gus_mem_size, &wad);
+    setup_timidity(&user_config, &wad);
 
     let game = Game::new(
         options.clone().into(),
         wad,
-        snd_ctx,
         user_config.sfx_vol,
         user_config.mus_vol,
     );

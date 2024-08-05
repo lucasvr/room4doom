@@ -7,12 +7,12 @@ use glam::Vec2;
 use log::{debug, info};
 use sdl2::audio::{AudioCVT, AudioFormat};
 use sdl2::mixer::{Chunk, InitFlag, Music, Sdl2MixerContext, AUDIO_S16LSB, DEFAULT_CHANNELS};
-use sdl2::AudioSubsystem;
 use sound_traits::{InitResult, SfxName, SoundAction, SoundServer, SoundServerTic, MUS_DATA};
 use wad::WadData;
 
-use crate::info::SFX_INFO_BASE;
-use crate::mus2midi::read_mus_to_midi;
+use crate::sdl2::info::SFX_INFO_BASE;
+use crate::sdl2::mus2midi::read_mus_to_midi;
+pub use crate::sdl2::timidity::GusMemSize;
 
 mod info;
 pub mod mus2midi;
@@ -118,7 +118,6 @@ fn lump_sfx_to_chunk(
 }
 
 pub struct Snd<'a> {
-    _audio: AudioSubsystem,
     _mixer: Sdl2MixerContext,
     rx: SndServerRx,
     tx: SndServerTx,
@@ -133,7 +132,7 @@ pub struct Snd<'a> {
 unsafe impl<'a> Send for Snd<'a> {}
 
 impl<'a> Snd<'a> {
-    pub fn new(audio: AudioSubsystem, wad: &WadData) -> Result<Self, Box<dyn Error>> {
+    pub fn new(wad: &WadData) -> Result<Self, Box<dyn Error>> {
         // let mut timer = sdl.timer()?;
         let frequency = 44_100;
         let format = AUDIO_S16LSB; // signed 16 bit samples, in little-endian byte order
@@ -144,8 +143,6 @@ impl<'a> Snd<'a> {
         let _mixer = sdl2::mixer::init(InitFlag::MOD | InitFlag::OGG)?;
         // Mixer channels are not play/stereo channels
         sdl2::mixer::allocate_channels(MIXER_CHANNELS);
-
-        info!("Using sound driver: {}", audio.current_audio_driver());
 
         let chunks: Vec<SfxInfo> = SFX_INFO_BASE
             .iter()
@@ -187,7 +184,6 @@ impl<'a> Snd<'a> {
 
         let (tx, rx) = channel();
         Ok(Self {
-            _audio: audio,
             _mixer,
             rx,
             tx,
@@ -449,3 +445,4 @@ mod tests {
         std::thread::sleep(Duration::from_secs(10));
     }
 }
+

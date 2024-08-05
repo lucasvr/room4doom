@@ -12,8 +12,7 @@ members = [
     "render/render-target",
     "render/software",
     "sound/traits",
-    "sound/sdl2",
-    "sound/nosnd",
+    "sound",
     "multigen",
     "hud-util",
     "hud-messages/doom",
@@ -41,9 +40,8 @@ hud-doom = { path = "./hud-messages/doom" }
 finale-doom = { path = "./finale/doom" }
 statusbar-doom = { path = "./statusbar/doom" }
 
+sound = { path = "./sound" }
 sound-traits = { path = "./sound/traits" }
-sound-sdl2 = { path = "./sound/sdl2" }
-sound-nosnd = { path = "./sound/nosnd" }
 render-target = { path = "./render/render-target" }
 render-soft = { path = "./render/software" }
 render-opengl = { path = "./render/opengl" }
@@ -54,7 +52,6 @@ sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", features = [
     "mixer",
     "bundled",
 ] }
-#sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", features = ["mixer"] }
 
 argh = "0.1.12"
 sarge = "*"

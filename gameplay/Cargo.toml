@@ -12,7 +12,7 @@ safety_check = []
 
 [dependencies]
 sound-traits.workspace = true
-sound-sdl2.workspace = true
+sound.workspace = true
 wad.workspace = true
 glam.workspace = true
 log.workspace = true

@@ -9,8 +9,7 @@ license.workspace = true
 gameplay.workspace = true
 gamestate-traits.workspace = true
 sound-traits.workspace = true
-sound-sdl2.workspace = true
-sound-nosnd.workspace = true
+sound.workspace = true
 menu-doom.workspace = true
 wad.workspace = true
 

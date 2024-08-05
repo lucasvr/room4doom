@@ -1,7 +1,7 @@
 //! Doom source name `p_switch`
 
 use log::{debug, warn};
-use sound_sdl2::SndServerTx;
+use sound::SndServerTx;
 use sound_traits::SfxName;
 
 use crate::thing::MapObject;

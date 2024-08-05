@@ -68,9 +68,9 @@ checksum = "b236fc92302c97ed75b38da1f4917b5cdda4984745740f153a5d3059e48d725e"
 
 [[package]]
 name = "cc"
-version = "1.0.104"
+version = "1.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b6a57f98764a267ff415d50a25e6e166f3831a5071af4995296ea97d210490"
+checksum = "26a5c3fd7bfa1ce3897a3a3501d362b2d87b7f2583ebcb4a949ec25911025cbc"
 
 [[package]]
 name = "cfg-if"
@@ -137,7 +137,7 @@ version = "0.15.3"
 dependencies = [
  "glam",
  "log",
- "sound-sdl2",
+ "sound",
  "sound-traits",
  "wad",
 ]
@@ -150,8 +150,7 @@ dependencies = [
  "gamestate-traits",
  "menu-doom",
  "nanoserde",
- "sound-nosnd",
- "sound-sdl2",
+ "sound",
  "sound-traits",
  "wad",
 ]
@@ -473,7 +472,7 @@ dependencies = [
  "nanoserde",
  "render-soft",
  "render-target",
- "sound-sdl2",
+ "sound",
  "sound-traits",
  "statusbar-doom",
  "wad",
@@ -482,7 +481,7 @@ dependencies = [
 [[package]]
 name = "sdl2"
 version = "0.37.0"
-source = "git+https://github.com/Rust-SDL2/rust-sdl2#315c9e22d5e1dcbc6d290a000c993c219908d35f"
+source = "git+https://github.com/Rust-SDL2/rust-sdl2#dba66e80b14e16de309df49df0c20fdaf35b8c67"
 dependencies = [
  "bitflags 1.3.2",
  "lazy_static",
@@ -493,7 +492,7 @@ dependencies = [
 [[package]]
 name = "sdl2-sys"
 version = "0.37.0"
-source = "git+https://github.com/Rust-SDL2/rust-sdl2#315c9e22d5e1dcbc6d290a000c993c219908d35f"
+source = "git+https://github.com/Rust-SDL2/rust-sdl2#dba66e80b14e16de309df49df0c20fdaf35b8c67"
 dependencies = [
  "cfg-if",
  "cmake",
@@ -531,18 +530,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sound-nosnd"
-version = "0.15.3"
-dependencies = [
- "glam",
- "log",
- "nanoserde",
- "sound-traits",
- "wad",
-]
-
-[[package]]
-name = "sound-sdl2"
+name = "sound"
 version = "0.15.3"
 dependencies = [
  "glam",
