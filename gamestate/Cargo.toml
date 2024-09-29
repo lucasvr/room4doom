@@ -1,0 +1,17 @@
+[package]
+name = "gamestate"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+gameplay.workspace = true
+gamestate-traits.workspace = true
+sound-traits.workspace = true
+sound.workspace = true
+menu-doom.workspace = true
+wad.workspace = true
+
+# utility deps
+nanoserde.workspace = true

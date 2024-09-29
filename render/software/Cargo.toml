@@ -1,0 +1,18 @@
+[package]
+name = "render-soft"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "../../build.rs"
+
+[features]
+safety_check = ["render-target/safety_check"]
+
+[dependencies]
+glam.workspace = true
+gameplay.workspace = true
+render-target.workspace = true
+
+[dev-dependencies]
+wad.workspace = true

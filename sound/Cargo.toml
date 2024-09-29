@@ -1,0 +1,22 @@
+[package]
+name = "sound"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "../build.rs"
+
+[lib]
+path = "lib.rs"
+
+[features]
+sdl2-snd = ["sdl2", "glam", "nanoserde"]
+dummy-snd = []
+
+[dependencies]
+sound-traits.workspace = true
+wad.workspace = true
+log.workspace = true
+nanoserde = { workspace = true, optional = true }
+sdl2 = { workspace = true, optional = true }
+glam = { workspace = true, optional = true }

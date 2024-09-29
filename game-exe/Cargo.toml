@@ -1,0 +1,46 @@
+[package]
+name = "room4doom"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "../build.rs"
+default-run = "room4doom"
+
+[[bin]]
+name = "room4doom"
+path = "src/main.rs"
+
+[features]
+default = ["sdl2-snd", "sdl2-input"]
+sdl2-snd = []
+sdl2-input = []
+
+[dependencies]
+golem = { git = "https://github.com/flukejones/golem/" }
+
+argh.workspace = true
+input.workspace = true
+menu-doom.workspace = true
+gameplay.workspace = true
+gamestate.workspace = true
+gamestate-traits.workspace = true
+
+intermission-doom.workspace = true
+hud-doom.workspace = true
+finale-doom.workspace = true
+statusbar-doom.workspace = true
+
+sound-traits.workspace = true
+sound.workspace = true
+render-target.workspace = true
+render-soft.workspace = true
+wad.workspace = true
+
+# utility deps
+env_logger.workspace = true
+dirs.workspace = true
+nanoserde.workspace = true
+
+#[dev-dependencies]
+#cargo-husky.workspace = true

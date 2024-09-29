@@ -1,0 +1,20 @@
+[package]
+name = "gamestate-traits"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+sdl2-snd = ["gameplay/sdl2-snd"]
+dummy-snd = ["gameplay/dummy-snd"]
+
+sdl2-input = ["input/sdl2-input"]
+dummy-input = ["input/dummy-input"]
+
+[dependencies]
+gameplay.workspace = true
+input.workspace = true
+render-target.workspace = true
+sound-traits.workspace = true
+wad.workspace = true

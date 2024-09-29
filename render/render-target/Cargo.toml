@@ -1,0 +1,18 @@
+[package]
+name = "render-target"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+build = "../../build.rs"
+
+[features]
+software = ["gameplay/sdl2-snd", "sdl2"]
+softopengl = ["gameplay/sdl2-snd", "golem", "sdl2"]
+safety_check = []
+
+[dependencies]
+gameplay.workspace = true
+golem = { workspace = true, optional = true }
+sdl2 = { workspace = true, optional = true }
+nanoserde.workspace = true

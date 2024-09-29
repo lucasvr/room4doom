@@ -1,0 +1,12 @@
+[package]
+name = "finale-doom"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+wad.workspace = true
+gamestate-traits.workspace = true
+hud-util.workspace = true
+log.workspace = true

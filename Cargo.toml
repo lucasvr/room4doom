@@ -1,0 +1,88 @@
+[workspace]
+members = [
+    "wad",
+    "game-exe",
+    "gameplay",
+    "gamestate",
+    "gamestate-traits",
+    "intermission/doom",
+    "statusbar/doom",
+    "input",
+    "menu/doom",
+    "render/render-target",
+    "render/software",
+    "sound/traits",
+    "sound",
+    "multigen",
+    "hud-util",
+    "hud-messages/doom",
+    "finale/doom",
+]
+default-members = ["game-exe", "multigen"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Luke Jones <luke@ljones.dev>"]
+version = "0.15.3"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+wad = { path = "./wad" }
+input = { path = "./input" }
+menu-doom = { path = "./menu/doom" }
+gameplay = { path = "./gameplay" }
+gamestate = { path = "./gamestate" }
+gamestate-traits = { path = "./gamestate-traits" }
+intermission-doom = { path = "./intermission/doom" }
+hud-util = { path = "./hud-util" }
+hud-doom = { path = "./hud-messages/doom" }
+finale-doom = { path = "./finale/doom" }
+statusbar-doom = { path = "./statusbar/doom" }
+
+sound = { path = "./sound" }
+sound-traits = { path = "./sound/traits" }
+render-target = { path = "./render/render-target" }
+render-soft = { path = "./render/software" }
+render-opengl = { path = "./render/opengl" }
+
+glam = { version = "*", default-features = false, features = ["libm"] }
+golem = { git = "https://github.com/flukejones/golem/" }
+sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", features = [
+    "mixer",
+    "bundled",
+] }
+
+argh = "0.1.12"
+sarge = "*"
+
+log = "*"
+env_logger = { version = "^0.10" }
+dirs = "~5.0"
+nanoserde = { git = "https://github.com/not-fl3/nanoserde.git", default-features = false, features = [
+    "ron",
+] }
+
+#[workspace.dependencies.cargo-husky]
+#version = "1"
+#default-features = false
+#features = ["user-hooks"]
+
+[profile.release]
+lto = true
+debug = false
+opt-level = 3
+panic = "abort"
+strip = true
+codegen-units = 1
+
+[profile.dev]
+debug = true
+opt-level = 3
+codegen-units = 1
+
+[profile.bench]
+lto = true
+debug = true
+opt-level = 3
+codegen-units = 1
