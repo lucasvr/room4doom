@@ -8,6 +8,7 @@ license.workspace = true
 [features]
 sdl2-snd = ["sound/sdl2-snd"]
 dummy-snd = ["sound/dummy-snd"]
+rustysynth-snd = ["sound/rustysynth-snd"]
 null_check = []
 safety_check = []
 

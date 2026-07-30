@@ -11,6 +11,7 @@ path = "lib.rs"
 [features]
 sdl2-snd = ["sdl2", "glam", "nanoserde"]
 dummy-snd = []
+rustysynth-snd = ["rustysynth"]
 
 [dependencies]
 sound-traits.workspace = true
@@ -19,3 +20,4 @@ log.workspace = true
 nanoserde = { workspace = true, optional = true }
 sdl2 = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
+rustysynth = { workspace = true, optional = true }

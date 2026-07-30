@@ -410,7 +410,8 @@ pub fn read_mus_to_midi(buf: &[u8]) -> Option<Vec<u8>> {
     Some(out)
 }
 
-#[cfg(test)]
+// These tests play back through SDL2 and require the sdl2-snd feature.
+#[cfg(all(test, feature = "sdl2-snd"))]
 mod tests {
     use std::env::set_var;
     use std::fs::File;

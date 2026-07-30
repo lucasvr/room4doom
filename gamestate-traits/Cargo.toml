@@ -8,6 +8,7 @@ license.workspace = true
 [features]
 sdl2-snd = ["gameplay/sdl2-snd"]
 dummy-snd = ["gameplay/dummy-snd"]
+rustysynth-snd = ["gameplay/rustysynth-snd"]
 
 sdl2-input = ["input/sdl2-input"]
 dummy-input = ["input/dummy-input"]

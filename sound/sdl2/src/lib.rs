@@ -10,12 +10,10 @@ use sdl2::mixer::{Chunk, InitFlag, Music, Sdl2MixerContext, AUDIO_S16LSB, DEFAUL
 use sound_traits::{InitResult, SfxName, SoundAction, SoundServer, SoundServerTic, MUS_DATA};
 use wad::WadData;
 
-use crate::sdl2::info::SFX_INFO_BASE;
-use crate::sdl2::mus2midi::read_mus_to_midi;
+use crate::info::SFX_INFO_BASE;
+use crate::mus2midi::read_mus_to_midi;
 pub use crate::sdl2::timidity::GusMemSize;
 
-mod info;
-pub mod mus2midi;
 pub mod timidity;
 
 #[cfg(test)]
